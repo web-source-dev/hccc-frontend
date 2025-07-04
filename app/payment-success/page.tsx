@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { CheckCircle, Home, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getPaymentDetails, type Payment } from '@/lib/payments';
 import Image from 'next/image';
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -139,5 +139,25 @@ export default function PaymentSuccessPage() {
         .bg-gold-400 { background-color: #FFD700; }
       `}</style>
     </div>
+  );
+}
+
+// Loading component for suspense fallback
+function LoadingPayment() {
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gold-400 mx-auto mb-4"></div>
+        <p>Loading payment details...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingPayment />}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 } 

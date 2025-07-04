@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -163,7 +163,7 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess }:
   );
 }
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [game, setGame] = useState<Game | null>(null);
@@ -198,16 +198,22 @@ export default function CheckoutPage() {
         
         // Fetch game details
         const gameResponse = await getGame(gameId);
-        setGame(gameResponse.data.game);
-
+        const game = gameResponse.data.game;
+        setGame(game);
+        
         // Create payment intent
         const paymentResponse = await createPaymentIntent({
           gameId,
           packageIndex,
           location,
         });
-
-        setClientSecret(paymentResponse.data.clientSecret);
+        
+        if (paymentResponse.success) {
+          setClientSecret(paymentResponse.data.clientSecret);
+        } else {
+          throw new Error('Failed to create payment intent');
+        }
+        
       } catch (err: unknown) {
         setError((err as Error).message || 'Failed to initialize checkout');
       } finally {
@@ -216,55 +222,43 @@ export default function CheckoutPage() {
     };
 
     initializeCheckout();
-  }, [gameId, packageIndex, location, router, initialized]);
+  }, [gameId, packageIndex, location, initialized, router]);
 
   const handlePaymentSuccess = (payment: Payment) => {
     setPaymentSuccess(payment);
-    // Redirect to success page after a short delay
-    setTimeout(() => {
-      router.push(`/payment-success?paymentId=${payment._id}`);
-    }, 2000);
+    // Redirect to success page
+    router.push(`/payment-success?paymentId=${payment._id}`);
   };
 
   const handlePaymentError = (error: string) => {
     setError(error);
-    setInitialized(false); // Allow retry
   };
-
-  // Cleanup function to prevent memory leaks
-  useEffect(() => {
-    return () => {
-      setInitialized(false);
-    };
-  }, []);
-
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gold-400" />
-          <p>Initializing checkout...</p>
+          <p className="text-white">Initializing checkout...</p>
         </div>
       </div>
     );
   }
 
-  if (error && !clientSecret) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <XCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold mb-2">Checkout Error</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
-          <div className="space-x-4">
-            <Button onClick={() => router.push('/')} variant="outline">
-              Go Home
-            </Button>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
-          </div>
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="max-w-md w-full">
+          <Alert variant="destructive" className="mb-6">
+            <XCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+          <Button 
+            onClick={() => router.push('/')} 
+            className="w-full"
+          >
+            Return to Home
+          </Button>
         </div>
       </div>
     );
@@ -272,26 +266,25 @@ export default function CheckoutPage() {
 
   if (paymentSuccess) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold mb-2 text-gold-400">Payment Successful!</h2>
-          <p className="text-gray-300 mb-4">
-            You have successfully purchased {paymentSuccess.tokenPackage.tokens} tokens for {paymentSuccess.metadata.gameName}.
-          </p>
-          <p className="text-sm text-gray-400 mb-6">
-            Your tokens will be available at {paymentSuccess.location}.
-          </p>
-          <div className="space-x-4">
-            <Button onClick={() => router.push('/')}>
-              Go Home
-            </Button>
-            {paymentSuccess.receiptUrl && (
-              <Button variant="outline" onClick={() => window.open(paymentSuccess.receiptUrl, '_blank')}>
-                View Receipt
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <div className="max-w-md w-full">
+          <Card className="bg-gray-900 border-gray-800">
+            <CardHeader className="text-center">
+              <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
+              <CardTitle className="text-2xl font-bold">Payment Successful!</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-center text-gray-300">
+                Your payment was processed successfully. Your tokens are available at the selected location.
+              </p>
+              <Button 
+                onClick={() => router.push('/')} 
+                className="w-full"
+              >
+                Return to Home
               </Button>
-            )}
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
@@ -299,40 +292,42 @@ export default function CheckoutPage() {
 
   if (!game || !clientSecret) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-black">
         <div className="text-center">
-          <p className="text-red-400">Failed to load checkout</p>
+          <p className="text-red-400 mb-4">Could not initialize checkout</p>
+          <Button 
+            onClick={() => router.push('/')} 
+          >
+            Return to Home
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white py-12">
+    <div className="min-h-screen py-12 bg-black">
       <div className="max-w-md mx-auto px-4">
-        <div className="flex items-center gap-4 mb-6">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.back()}
-            className="flex items-center gap-2"
+        <div className="flex items-center mb-8">
+          <button 
+            onClick={() => router.back()} 
+            className="flex items-center text-gold-400 hover:text-white"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 mr-1" />
             Back
-          </Button>
-          <h1 className="text-2xl font-bold">Checkout</h1>
+          </button>
         </div>
-
-        <Card className="bg-gray-900 border-gray-700">
+        
+        <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">Complete Your Purchase</CardTitle>
+            <CardTitle className="text-xl font-bold">Complete Your Purchase</CardTitle>
           </CardHeader>
           <CardContent>
             <Elements stripe={stripePromise}>
-              <CheckoutForm
+              <CheckoutForm 
                 game={game}
                 packageIndex={packageIndex}
-                location={location!}
+                location={location || ''}
                 clientSecret={clientSecret}
                 onSuccess={handlePaymentSuccess}
                 onError={handlePaymentError}
@@ -341,11 +336,31 @@ export default function CheckoutPage() {
           </CardContent>
         </Card>
       </div>
-
+      
       <style jsx global>{`
         .text-gold-400 { color: #FFD700; }
         .bg-gold-400 { background-color: #FFD700; }
       `}</style>
     </div>
+  );
+}
+
+// Loading component for suspense fallback
+function LoadingCheckout() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gold-400" />
+        <p className="text-white">Preparing checkout...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<LoadingCheckout />}>
+      <CheckoutPageContent />
+    </Suspense>
   );
 } 

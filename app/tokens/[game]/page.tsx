@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ShoppingCart, Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ import Link from "next/link";
 import { getGame, type Game } from "@/lib/games";
 import Image from "next/image";
 
-export default function TokenPage() {
+function TokenPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const location = searchParams.get("location") || "";
@@ -121,5 +121,25 @@ export default function TokenPage() {
         .border-gold-700 { border-color: #bfa100; }
       `}</style>
     </div>
+  );
+}
+
+// Loading component for suspense fallback
+function LoadingTokenPage() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-gold-400" />
+        <p className="text-white">Loading game...</p>
+      </div>
+    </div>
+  );
+}
+
+export default function TokenPage() {
+  return (
+    <Suspense fallback={<LoadingTokenPage />}>
+      <TokenPageContent />
+    </Suspense>
   );
 } 
