@@ -134,6 +134,18 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setValue('image', reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
       {error && (
@@ -196,13 +208,22 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
           </div>
 
           <div>
-            <Label htmlFor="image">Image URL *</Label>
-            <Input
-              id="image"
-              {...register('image')}
-              className={errors.image ? 'border-red-500' : ''}
-              placeholder="Enter image URL"
-            />
+            <Label htmlFor="image">Game Image *</Label>
+            <div className="flex items-center space-x-4">
+              <Button type="button" variant="outline" onClick={() => document.getElementById('imageInput')?.click()}>
+                Upload Image
+              </Button>
+              <input
+                id="imageInput"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+              {watch('image') && (
+                <img src={watch('image')} alt="Preview" className="w-16 h-16 rounded object-cover border" />
+              )}
+            </div>
             {errors.image && (
               <p className="text-sm text-red-500 mt-1">{errors.image.message}</p>
             )}
