@@ -27,7 +27,7 @@ import {
   Minus,
   Ban,
   SortAsc,
-  SortDesc
+  SortDesc,
 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { getGames, deleteGame, type Game } from '@/lib/games'

@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react"
 import {
   MapPin,
+  Trophy,
+  Star,
+  Clock,
+  Phone
 } from "lucide-react"
 import Link from "next/link"
 import { getGames, type Game } from "@/lib/games"
@@ -62,6 +66,29 @@ function GameCard({ game, location }: { game: Game; location: string }) {
   );
 }
 
+// Recent Winner Card component
+function WinnerCard({ winner }: { winner: { name: string; game: string; location: string; amount: string; date: string } }) {
+  return (
+    <div className="bg-[#222] rounded-xl p-6 border border-yellow-400/20 hover:border-yellow-400/40 transition-all duration-300">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <Trophy className="w-6 h-6 text-yellow-400" />
+          <h4 className="font-bold text-yellow-400">{winner.name}</h4>
+        </div>
+        <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-semibold">
+          WINNER!
+        </span>
+      </div>
+      <div className="space-y-2 text-sm">
+        <p><span className="text-gray-400">Game:</span> <span className="font-semibold">{winner.game}</span></p>
+        <p><span className="text-gray-400">Location:</span> <span className="font-semibold">{winner.location}</span></p>
+        <p><span className="text-gray-400">Amount:</span> <span className="font-semibold text-green-400">{winner.amount}</span></p>
+        <p><span className="text-gray-400">Date:</span> <span className="font-semibold">{winner.date}</span></p>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +128,16 @@ export default function LandingPage() {
     return acc;
   }, {} as Record<string, Array<{ game: Game; location: string; available: boolean }>>);
 
+  // Sample recent winners data
+  const recentWinners = [
+    { name: "Sarah M.", game: "Golden Dragon", location: "Cedar Park", amount: "$1,250", date: "12/15/2024" },
+    { name: "Mike R.", game: "River Tower", location: "Liberty Hill", amount: "$850", date: "12/14/2024" },
+    { name: "Jennifer L.", game: "Ultra Panda", location: "Cedar Park", amount: "$2,100", date: "12/13/2024" },
+    { name: "David K.", game: "Fortune 2 Go", location: "Liberty Hill", amount: "$675", date: "12/12/2024" },
+    { name: "Amanda P.", game: "Magic City", location: "Cedar Park", amount: "$1,800", date: "12/11/2024" },
+    { name: "Robert T.", game: "Orion Star", location: "Cedar Park", amount: "$950", date: "12/10/2024" }
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
@@ -130,13 +167,49 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
+      {/* Hero Section with GIF (solid black, no border, smaller image) */}
+      <section className="w-full bg-black flex flex-col items-center justify-center py-16">
+        <h1 className="text-6xl md:text-8xl font-bold mb-8 tracking-tight text-white text-center">
+          HCCC GAMEROOM
+        </h1>
+        <div className="mb-8 flex justify-center">
+          <div className="relative w-[320px] h-[320px] md:w-[400px] md:h-[400px]">
+            <Image 
+              src="/image.gif" 
+              alt="HCCC Gameroom Animation" 
+              fill
+              className="object-cover"
+              priority
+            />
+          </div>
+        </div>
+        <p className="text-xl md:text-2xl text-yellow-400 mb-8 max-w-3xl mx-auto">
+          Central Texas&apos;s Premier Gaming Destination
+        </p>
+        <div className="flex flex-wrap justify-center gap-8 text-lg">
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-6 h-6 text-yellow-400" />
+            <span>Two Locations</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Trophy className="w-6 h-6 text-yellow-400" />
+            <span>Big Winners</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Star className="w-6 h-6 text-yellow-400" />
+            <span>Premium Games</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Game Sections */}
       {Object.entries(gamesByLocation).map(([location, locationGames]) => (
         <section key={location} className="py-16 bg-black">
           <h2 className="text-5xl font-extrabold text-center mb-10 tracking-tight text-white font-sans flex items-center justify-center gap-3" style={{ letterSpacing: 2 }}>
             <MapPin className="w-8 h-8 text-yellow-400 inline-block" />
             {location.toUpperCase()}
           </h2>
-          <div className="max-w-4xl mx-auto bg-[#222] rounded-2xl p-8 grid grid-cols-1 sm:grid-cols-3 gap-8">
+          <div className="max-w-6xl mx-auto bg-[#222] rounded-2xl p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
             {locationGames.map((combination) => (
               <GameCard 
                 key={`${combination.game._id}-${combination.location}`} 
@@ -149,13 +222,181 @@ export default function LandingPage() {
       ))}
       
       {Object.keys(gamesByLocation).length === 0 && (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
-          <div className="text-center">
+        <section className="py-16 bg-black">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-5xl font-extrabold mb-10 tracking-tight text-white">GAMES</h2>
+            <div className="bg-[#222] rounded-2xl p-8">
             <p className="text-gray-400 mb-4">No games available at the moment.</p>
             <p className="text-sm text-gray-500">Please check back later or contact an administrator.</p>
           </div>
         </div>
+        </section>
       )}
+
+      {/* Recent Winners Section */}
+      <section className="py-20 bg-[#111]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-5xl font-bold text-center mb-4 text-yellow-400">RECENT IN HOUSE WINNERS</h2>
+          <p className="text-center text-gray-300 mb-12 max-w-2xl mx-auto">
+            Congratulations to our latest winners! Join the excitement and see if you can be next.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recentWinners.map((winner, index) => (
+              <WinnerCard key={index} winner={winner} />
+            ))}
+          </div>
+          
+          <div className="text-center mt-12">
+            <p className="text-sm text-gray-400 mb-4">
+              &quot;To play, press and hold the enter key. To stop, release the enter key.&quot;
+            </p>
+            <Link 
+              href="/promotions" 
+              className="inline-block bg-yellow-400 text-black px-8 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors"
+            >
+              View All Promotions
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Quick Contact Section */}
+      <section className="py-20 bg-[#111]">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-4xl font-bold text-center mb-12 text-yellow-400">VISIT US TODAY</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Cedar Park */}
+            <div className="bg-[#222] rounded-2xl p-8">
+              <h3 className="text-2xl font-bold mb-6 text-yellow-400">CEDAR PARK</h3>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <MapPin className="w-5 h-5 text-yellow-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">601 E Whitestone Blvd, Suite 304</p>
+                    <p className="text-gray-300">Cedar Park, TX 78613</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="w-5 h-5 text-yellow-400" />
+                  <a href="tel:5129867878" className="hover:text-yellow-400 transition-colors">
+                    (512) 986-7878
+                  </a>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <Clock className="w-5 h-5 text-yellow-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">Hours:</p>
+                    <p className="text-gray-300">Monday - Sunday: 11 am - 3 am</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Liberty Hill */}
+            <div className="bg-[#222] rounded-2xl p-8">
+              <h3 className="text-2xl font-bold mb-6 text-yellow-400">LIBERTY HILL</h3>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <MapPin className="w-5 h-5 text-yellow-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">15399 TX-29 Unit B</p>
+                    <p className="text-gray-300">Liberty Hill, TX 78642</p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Phone className="w-5 h-5 text-yellow-400" />
+                  <a href="tel:5125486505" className="hover:text-yellow-400 transition-colors">
+                    (512) 548-6505
+                  </a>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <Clock className="w-5 h-5 text-yellow-400 mt-1 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">Hours:</p>
+                    <p className="text-gray-300">Monday - Thursday: 10 am - 11 pm</p>
+                    <p className="text-gray-300">Friday - Saturday: 10 am - midnight</p>
+                    <p className="text-gray-300">Sunday: 10 am - 11 pm</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Digital Reloads & Redemption Disclaimer Section with Waves (full width, before newsletter) */}
+      <section className="relative w-full bg-black py-16 overflow-x-hidden">
+        {/* Top Wave - full screen width, outside content container */}
+        <div className="absolute top-0 left-0 w-screen min-w-full" aria-hidden="true" style={{minWidth: '100vw'}}>
+          <svg viewBox="0 0 1200 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-screen h-16 min-w-full">
+            <path d="M0 40 Q300 80 600 40 T1200 40 V80 H0 V40Z" fill="white" fillOpacity="0.15" />
+            <path d="M0 60 Q300 20 600 60 T1200 60 V80 H0 V60Z" fill="white" fillOpacity="0.10" />
+          </svg>
+        </div>
+        <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-2xl md:text-3xl font-extrabold mb-8 text-white tracking-wide">DIGITAL RELOADS & REDEMPTION DISCLAIMER</h2>
+          <ul className="text-left text-white text-base md:text-lg mb-6 list-disc list-inside space-y-2">
+            <li>All sales are final. There are no refunds on any digital reload purchases.</li>
+            <li>Redemptions must be made in person at either of our two physical HCCC Gameroom locations: Cedar Park or Liberty Hill.</li>
+            <li>A valid government-issued photo ID is required at the time of redemption. No exceptions.</li>
+            <li>Daily redemption limit is $500 per person, per day.</li>
+            <li>HCCC Gameroom is not liable for any malfunctions, interruptions, or errors related to third-party online games. While we strive to ensure a smooth experience, technical issues beyond our control may occur.</li>
+            <li>Players are responsible for maintaining the security and access to their own accounts. Please play responsibly.</li>
+            <li>By proceeding with a digital reload, you confirm that you are at least 18 years of age and agree to these terms in full.</li>
+          </ul>
+          <p className="text-white text-base md:text-lg">For any questions or concerns, feel free to reach out directly. Thank you for choosing HCCC Gameroom — Spin. Win. Repeat.</p>
+        </div>
+        {/* Bottom Wave - full screen width, outside content container */}
+        <div className="absolute bottom-0 left-0 w-screen min-w-full" aria-hidden="true" style={{minWidth: '100vw'}}>
+          <svg viewBox="0 0 1200 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-screen h-16 min-w-full">
+            <path d="M0 40 Q300 80 600 40 T1200 40 V80 H0 V40Z" fill="white" fillOpacity="0.15" />
+            <path d="M0 60 Q300 20 600 60 T1200 60 V80 H0 V60Z" fill="white" fillOpacity="0.10" />
+          </svg>
+        </div>
+      </section>
+
+      {/* Newsletter Signup Section (full, matches screenshot) */}
+      <section className="w-full flex justify-center items-center py-16 bg-[#8b0000]">
+        <form className="w-full max-w-xl bg-[#8b0000] p-8 rounded-lg shadow-lg text-white space-y-6">
+          <h2 className="text-2xl md:text-2xl font-bold mb-4 text-white">Subscribe to our newsletter • Don&apos;t miss out!</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block mb-1 font-medium">First name</label>
+              <input type="text" className="w-full px-4 py-2 rounded bg-white text-black" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Last name</label>
+              <input type="text" className="w-full px-4 py-2 rounded bg-white text-black" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Month & year you were born mmyyyy *</label>
+              <input type="text" className="w-full px-4 py-2 rounded bg-white text-black" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Email *</label>
+              <div className="flex">
+                <input type="email" className="flex-1 px-4 py-2 rounded-l bg-white text-black" placeholder="e.g., email@example.com" />
+                <button type="submit" className="px-6 py-2 bg-black text-white font-bold rounded-r">Join</button>
+              </div>
+            </div>
+            <div>
+              <p className="italic text-white text-sm mt-1 mb-2">Provide number if you would like to be one of the first to occasionally be texted about the latest promotions and events!</p>
+              <label className="block mb-1 font-medium">Phone</label>
+              <input type="tel" className="w-full px-4 py-2 rounded bg-white text-black" />
+            </div>
+            <div>
+              <label className="block mb-1 font-medium">Address *</label>
+              <input type="text" className="w-full px-4 py-2 rounded bg-white text-black" />
+            </div>
+            <div className="flex items-center mt-2">
+              <input type="checkbox" className="w-4 h-4 mr-2 accent-[#8b0000] border border-white" />
+              <span className="text-white text-sm">I want to subscribe to your mailing list.</span>
+            </div>
+          </div>
+        </form>
+      </section>
     </div>
   )
 }

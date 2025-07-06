@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -221,7 +222,7 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
                 className="hidden"
               />
               {watch('image') && (
-                <img src={watch('image')} alt="Preview" className="w-16 h-16 rounded object-cover border" />
+                <Image src={watch('image')} alt="Preview" className="w-16 h-16 rounded object-cover border" width={256} height={256} />
               )}
             </div>
             {errors.image && (
