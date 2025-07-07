@@ -292,16 +292,7 @@ function CheckoutPageContent() {
 
   if (!game || !clientSecret) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">Could not initialize checkout</p>
-          <Button 
-            onClick={() => router.push('/')} 
-          >
-            Return to Home
-          </Button>
-        </div>
-      </div>
+     <div className="min-h-screen flex items-center justify-center bg-black"></div>
     );
   }
 
