@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -93,7 +93,7 @@ interface TokenBalance {
   updatedAt: string;
 }
 
-export default function ProfilePage() {
+function ProfileContent() {
   const [user, setUser] = useState<User | null>(null)
   const [userName, setUserName] = useState('')
   const [userEmail, setUserEmail] = useState('')
@@ -725,5 +725,13 @@ export default function ProfilePage() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
+      <ProfileContent />
+    </Suspense>
   )
 } 
