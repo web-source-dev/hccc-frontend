@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -12,7 +11,6 @@ import { logoutUser, createLoginUrl, createSignupUrl, useAuth } from '@/lib/auth
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const pathname = usePathname();
   const { user, loading } = useAuth(); // Use the new useAuth hook
 
   const handleLogout = () => {
