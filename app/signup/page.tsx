@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { signupUser } from '@/lib/auth';
+import { signupUser, setRedirectUrl, getRedirectUrl, removeRedirectUrl, createLoginUrl, dispatchAuthChange } from '@/lib/auth';
 
 const signupSchema = z.object({
   username: z
@@ -43,6 +43,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const {
     register,
@@ -51,6 +52,21 @@ export default function SignupPage() {
   } = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
   });
+
+  // Handle redirect URL on component mount
+  useEffect(() => {
+    const redirectUrl = searchParams.get('redirect');
+    if (redirectUrl) {
+      setRedirectUrl(redirectUrl);
+    } else {
+      // If no redirect parameter, store current page as redirect
+      const currentUrl = window.location.href;
+      // Don't store signup page itself as redirect
+      if (!currentUrl.includes('/signup')) {
+        setRedirectUrl(currentUrl);
+      }
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: SignupForm) => {
     setIsLoading(true);
@@ -64,8 +80,18 @@ export default function SignupPage() {
       });
       
       if (response.success) {
-        // Redirect to dashboard or home page
-        router.push('/');
+        // Get the redirect URL and redirect user
+        const redirectUrl = getRedirectUrl();
+        removeRedirectUrl(); // Clean up
+        
+        // Dispatch auth change event to update header
+        dispatchAuthChange();
+        
+        if (redirectUrl) {
+          router.push(redirectUrl);
+        } else {
+          router.push('/');
+        }
       }
     } catch (err: unknown ) {
       setError((err as Error).message || 'Signup failed. Please try again.');
@@ -199,7 +225,7 @@ export default function SignupPage() {
             <p className="text-sm text-gray-600">
               Already have an account?{' '}
               <Link
-                href="/login"
+                href={createLoginUrl(getRedirectUrl() || window.location.href)}
                 className="font-medium text-green-600 hover:text-green-500 transition-colors"
               >
                 Sign in

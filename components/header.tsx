@@ -1,39 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, User as UserIcon, LogOut } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getCurrentUser, logoutUser, type User } from '@/lib/auth';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { logoutUser, createLoginUrl, createSignupUrl, useAuth } from '@/lib/auth';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const { user, loading } = useAuth(); // Use the new useAuth hook
 
   const handleLogout = () => {
     logoutUser();
-    setUser(null);
     setIsMenuOpen(false);
+    setIsUserMenuOpen(false);
   };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const getUserInitials = (username: string) => {
+    return username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   return (
@@ -59,7 +52,6 @@ export default function Header() {
             <Link href="/promotions" className="hover:text-yellow-300 transition-colors">
               Promotions
             </Link>
-
             <Link href="/sweepstakes" className="hover:text-yellow-300 transition-colors">
               Sweepstakes
             </Link>
@@ -73,30 +65,61 @@ export default function Header() {
             {loading ? (
               <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
             ) : user ? (
-              <div className="flex items-center space-x-4">
-                <Link href="/profile" className="flex items-center space-x-2">
-                  <UserIcon className="w-4 h-4" />
-                  <span className="text-sm">{user.username}</span>
-                </Link>
-               
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="text-white border-white hover:bg-white hover:text-[#b80000]"
-                >
-                  <LogOut className="w-4 h-4 mr-1" />
-                  Logout
-                </Button>
-              </div>
+              <DropdownMenu open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center space-x-2 p-2 hover:bg-white/10">
+                    <Avatar className="w-8 h-8 border-2 border-white/20">
+                      <AvatarImage src="/placeholder-user.jpg" alt={user.username} />
+                      <AvatarFallback className="bg-yellow-400 text-black text-sm font-semibold">
+                        {getUserInitials(user.username)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{user.username}</span>
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-gray-800 border-gray-700">
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="flex items-center space-x-2 cursor-pointer">
+                      <UserIcon className="w-4 h-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile?tab=tokens" className="flex items-center space-x-2 cursor-pointer">
+                      <Package className="w-4 h-4" />
+                      <span>My Tokens</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  {user.role === 'admin' && (
+                    <>
+                      <DropdownMenuSeparator className="bg-gray-600" />
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="flex items-center space-x-2 cursor-pointer">
+                          <Settings className="w-4 h-4" />
+                          <span>Admin Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  <DropdownMenuSeparator className="bg-gray-600" />
+                  <DropdownMenuItem 
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 cursor-pointer text-red-400 hover:text-red-300"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/login">
+                <Link href={createLoginUrl(window.location.href)}>
                   <Button variant="outline" size="sm" className="text-white border-white hover:bg-white hover:text-[#b80000]">
                     Log In
                   </Button>
                 </Link>
-                <Link href="/signup">
+                <Link href={createSignupUrl(window.location.href)}>
                   <Button size="sm" className="bg-yellow-400 text-black hover:bg-yellow-300">
                     Sign Up
                   </Button>
@@ -173,29 +196,60 @@ export default function Header() {
                   </div>
                 ) : user ? (
                   <div className="space-y-2">
-                    <Link href="/profile" className="flex items-center space-x-2 px-4 py-2">
-                      <UserIcon className="w-4 h-4" />
-                      <span className="text-sm">{user.username}</span>
+                    <div className="px-4 py-2 flex items-center space-x-3">
+                      <Avatar className="w-8 h-8 border-2 border-white/20">
+                        <AvatarImage src="/placeholder-user.jpg" alt={user.username} />
+                        <AvatarFallback className="bg-yellow-400 text-black text-xs font-semibold">
+                          {getUserInitials(user.username)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{user.username}</span>
+                    </div>
+                    
+                    <Link 
+                      href="/profile" 
+                      className="block px-4 py-2 hover:bg-white/10 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <UserIcon className="w-4 h-4 mr-2 inline" /> Profile
                     </Link>
+                    
+                    <Link 
+                      href="/profile?tab=tokens" 
+                      className="block px-4 py-2 hover:bg-white/10 transition-colors"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Package className="w-4 h-4 mr-2 inline" /> My Tokens
+                    </Link>
+                    
+                    {user.role === 'admin' && (
+                      <Link 
+                        href="/admin" 
+                        className="block px-4 py-2 hover:bg-white/10 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Settings className="w-4 h-4 mr-2 inline" /> Admin Dashboard
+                      </Link>
+                    )}
                     
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-white"
+                      className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-400"
                     >
-                      <LogOut className="w-4 h-4 mr-1 inline" /> Logout
+                      <LogOut className="w-4 h-4 mr-2 inline" /> Logout
                     </button>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <Link 
-                      href="/login" 
+                      href={createLoginUrl(window.location.href)} 
                       className="block px-4 py-2 hover:bg-white/10 transition-colors"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       Log In
                     </Link>
                     <Link 
-                      href="/signup" 
+                      href={createSignupUrl(window.location.href)} 
                       className="block px-4 py-2 hover:bg-white/10 transition-colors"
                       onClick={() => setIsMenuOpen(false)}
                     >

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -24,7 +25,7 @@ import {
   AlertCircle,
   Loader2
 } from "lucide-react"
-import { getCurrentUser, getUserTokenBalances } from "@/lib/auth"
+import { getCurrentUser, getUserTokenBalances, setRedirectUrl } from "@/lib/auth"
 import { getUserPayments, type Payment } from "@/lib/payments"
 import { getGames, type Game } from "@/lib/games"
 import type { User } from "@/lib/auth"
@@ -102,6 +103,15 @@ export default function ProfilePage() {
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([])
   const [activeTab, setActiveTab] = useState('overview')
   const [isEditing, setIsEditing] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Set active tab based on URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['overview', 'tokens', 'history', 'achievements'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   // Calculate user statistics
   const calculateUserStats = (): UserStats => {
@@ -148,6 +158,9 @@ export default function ProfilePage() {
         // Load user data
         const currentUser = await getCurrentUser()
         if (!currentUser) {
+          // Store current URL for redirect after login
+          const currentUrl = window.location.href;
+          setRedirectUrl(currentUrl);
           window.location.href = '/login'
           return
         }

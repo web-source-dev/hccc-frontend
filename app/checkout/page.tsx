@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getGame, type Game } from '@/lib/games';
 import { createPaymentIntent, confirmPayment, type Payment } from '@/lib/payments';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, setRedirectUrl } from '@/lib/auth';
 
 // Load Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -181,6 +181,9 @@ function CheckoutPageContent() {
     const initializeCheckout = async () => {
       // Check authentication
       if (!isAuthenticated()) {
+        // Store current URL for redirect after login
+        const currentUrl = window.location.href;
+        setRedirectUrl(currentUrl);
         router.push('/login');
         return;
       }

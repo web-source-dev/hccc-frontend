@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Shield, AlertTriangle } from 'lucide-react';
-import { getCurrentUser, isAuthenticated } from '@/lib/auth';
+import { getCurrentUser, isAuthenticated, setRedirectUrl } from '@/lib/auth';
 import { User } from '@/lib/auth';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,9 @@ export default function AdminProtected({ children }: AdminProtectedProps) {
       try {
         // Check if user is authenticated
         if (!isAuthenticated()) {
+          // Store current URL for redirect after login
+          const currentUrl = window.location.href;
+          setRedirectUrl(currentUrl);
           router.push('/login');
           return;
         }
@@ -30,6 +33,9 @@ export default function AdminProtected({ children }: AdminProtectedProps) {
         // Get current user
         const currentUser = await getCurrentUser();
         if (!currentUser) {
+          // Store current URL for redirect after login
+          const currentUrl = window.location.href;
+          setRedirectUrl(currentUrl);
           router.push('/login');
           return;
         }
@@ -81,7 +87,12 @@ export default function AdminProtected({ children }: AdminProtectedProps) {
               Go Home
             </Button>
             <Button 
-              onClick={() => router.push('/login')}
+              onClick={() => {
+                // Store current URL for redirect after login
+                const currentUrl = window.location.href;
+                setRedirectUrl(currentUrl);
+                router.push('/login');
+              }}
               className="flex-1"
             >
               Login

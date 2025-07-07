@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+
 export interface User {
   id: string;
   _id?: string;
@@ -53,6 +55,44 @@ export const removeToken = () => {
   }
 };
 
+// Store redirect URL in sessionStorage
+export const setRedirectUrl = (url: string) => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('redirect_url', url);
+  }
+};
+
+// Get redirect URL from sessionStorage
+export const getRedirectUrl = (): string | null => {
+  if (typeof window !== 'undefined') {
+    return sessionStorage.getItem('redirect_url');
+  }
+  return null;
+};
+
+// Remove redirect URL from sessionStorage
+export const removeRedirectUrl = () => {
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('redirect_url');
+  }
+};
+
+// Create login URL with redirect parameter
+export const createLoginUrl = (redirectUrl?: string): string => {
+  if (redirectUrl) {
+    return `/login?redirect=${encodeURIComponent(redirectUrl)}`;
+  }
+  return '/login';
+};
+
+// Create signup URL with redirect parameter
+export const createSignupUrl = (redirectUrl?: string): string => {
+  if (redirectUrl) {
+    return `/signup?redirect=${encodeURIComponent(redirectUrl)}`;
+  }
+  return '/signup';
+};
+
 // Get auth headers
 export const getAuthHeaders = () => {
   const token = getToken();
@@ -81,6 +121,7 @@ export const loginUser = async (data: LoginData): Promise<AuthResponse> => {
 
     if (result.success && result.data.token) {
       setToken(result.data.token);
+      dispatchAuthChange(); // Dispatch auth change event
     }
 
     return result;
@@ -108,6 +149,7 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
 
     if (result.success && result.data.token) {
       setToken(result.data.token);
+      dispatchAuthChange(); // Dispatch auth change event
     }
 
     return result;
@@ -144,6 +186,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
 // Logout user
 export const logoutUser = () => {
   removeToken();
+  removeRedirectUrl(); // Clear any stored redirect URLs
+  dispatchAuthChange(); // Dispatch auth change event
   // Redirect to login page
   if (typeof window !== 'undefined') {
     window.location.href = '/login';
@@ -422,5 +466,56 @@ export const blockUser = async (
     return result;
   } catch (error) {
     throw error;
+  }
+};
+
+// Custom hook for real-time authentication state
+export const useAuth = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for storage changes (when token is added/removed)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'auth_token') {
+        checkAuth();
+      }
+    };
+
+    // Listen for custom auth events
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('auth-change', handleAuthChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleAuthChange);
+    };
+  }, []);
+
+  return { user, loading };
+};
+
+// Dispatch auth change event
+export const dispatchAuthChange = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-change'));
   }
 }; 
