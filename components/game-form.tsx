@@ -86,22 +86,23 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
   const watchedLocations = watch('locations');
   const watchedTokenPackages = watch('tokenPackages');
 
-  const addLocation = () => {
-    const newLocations = [...watchedLocations, { name: '', available: true }];
-    setValue('locations', newLocations);
-  };
-
-  const removeLocation = (index: number) => {
-    if (watchedLocations.length > 1) {
-      const newLocations = watchedLocations.filter((_, i) => i !== index);
+  const toggleLocation = (locationName: string) => {
+    const currentLocations = watchedLocations;
+    const locationIndex = currentLocations.findIndex(loc => loc.name === locationName);
+    
+    if (locationIndex >= 0) {
+      // Remove location
+      const newLocations = currentLocations.filter((_, i) => i !== locationIndex);
+      setValue('locations', newLocations);
+    } else {
+      // Add location
+      const newLocations = [...currentLocations, { name: locationName, available: true }];
       setValue('locations', newLocations);
     }
   };
 
-  const updateLocation = (index: number, field: string, value: string | boolean) => {
-    const newLocations = [...watchedLocations];
-    newLocations[index] = { ...newLocations[index], [field]: value };
-    setValue('locations', newLocations);
+  const isLocationSelected = (locationName: string) => {
+    return watchedLocations.some(loc => loc.name === locationName);
   };
 
   const addTokenPackage = () => {
@@ -267,49 +268,28 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
           <CardTitle>Locations & Pricing</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {watchedLocations.map((location, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Location {index + 1}</h4>
-                {watchedLocations.length > 1 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => removeLocation(index)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Location Name *</Label>
-                  <Input
-                    value={location.name}
-                    onChange={(e) => updateLocation(index, 'name', e.target.value)}
-                    placeholder="e.g., Cedar Park"
+          <div>
+            <Label>Available Locations *</Label>
+            <div className="space-y-2 mt-2">
+              {DEFAULT_LOCATIONS.map((location) => (
+                <div key={location.name} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={`location-${location.name}`}
+                    checked={isLocationSelected(location.name)}
+                    onChange={() => toggleLocation(location.name)}
+                    className="rounded border-gray-300"
                   />
+                  <Label htmlFor={`location-${location.name}`} className="text-sm font-normal">
+                    {location.name}
+                  </Label>
                 </div>
-                
-                <div>
-                  <Label>Available</Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={location.available}
-                      onCheckedChange={(checked) => updateLocation(index, 'available', checked)}
-                    />
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-          ))}
-          
-          <Button type="button" variant="outline" onClick={addLocation}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Location
-          </Button>
+            {errors.locations && (
+              <p className="text-sm text-red-500 mt-1">{errors.locations.message}</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 

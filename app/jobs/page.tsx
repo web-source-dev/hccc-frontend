@@ -7,13 +7,13 @@ export default function JobsPage() {
       {/* Hero Section */}
       <div className="bg-gradient-to-b from-[#b80000] to-black py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-bold mb-6 tracking-tight text-center">
             CAREER OPPORTUNITIES
           </h1>
           <p className="text-xl md:text-2xl text-yellow-400 mb-8 max-w-3xl mx-auto">
             Join our team and be part of Central Texas&apos;s premier gaming destination
           </p>
-          <div className="flex justify-center space-x-8 text-lg">
+          <div className="flex flex-col md:flex-row justify-center gap-4 md:space-x-8 text-lg items-center">
             <div className="flex items-center space-x-2">
               <Briefcase className="w-6 h-6 text-yellow-400" />
               <span>Great Benefits</span>

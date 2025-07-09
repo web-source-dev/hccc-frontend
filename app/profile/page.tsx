@@ -141,7 +141,7 @@ function ProfileContent() {
       totalSpent,
       totalPurchases: payments.length,
       successfulPurchases: successfulPayments.length,
-      memberSince: user?.createdAt || new Date().toISOString(),
+      memberSince: user?.createdAt || '',
       achievementsUnlocked: unlockedAchievements.length,
       totalAchievements: achievements.length,
       favoriteCategory,
@@ -451,25 +451,38 @@ function ProfileContent() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800 border-gray-700">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600">
-              My Tokens
-            </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-purple-600">
-              Purchase History
-            </TabsTrigger>
-            <TabsTrigger value="achievements" className="data-[state=active]:bg-purple-600">
-              Achievements
-            </TabsTrigger>
-          </TabsList>
+          <div className="mb-6 pt-4 pb-2">
+            <TabsList
+              className="flex w-full whitespace-nowrap gap-2 bg-gray-800 border-gray-700 rounded-lg p-1 overflow-x-auto justify-start lg:justify-center"
+              style={{  scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
+                Overview
+              </TabsTrigger>
+              <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
+                My Tokens
+              </TabsTrigger>
+              <TabsTrigger value="history" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
+                Purchase History
+              </TabsTrigger>
+              <TabsTrigger value="achievements" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
+                Achievements
+              </TabsTrigger>
+            </TabsList>
+            <style>{`
+              @media (min-width: 1024px) {
+                .profile-tabslist {
+                  padding-left: 0 !important;
+                  justify-content: center !important;
+                }
+              }
+            `}</style>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Stats Grid: always 2 per row on mobile, 4 on desktop */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gray-800 border-gray-700">
                 <CardContent className="p-6 text-center">
                   <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">

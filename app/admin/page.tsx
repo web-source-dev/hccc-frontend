@@ -18,7 +18,6 @@ import {
   Trash2, 
   Eye, 
   Search, 
-  Download, 
   Gamepad2, 
   BarChart3,
   CreditCard,
@@ -113,28 +112,59 @@ export default function AdminPage() {
   })
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [pendingTokenChanges, setPendingTokenChanges] = useState<{ [key: string]: number }>({})
+  const [authError, setAuthError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+          setAuthError('No authentication token found');
+          return;
+        }
+        console.log('Admin page - Token found:', token.substring(0, 20) + '...', authError);
+        setAuthError(null);
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setAuthError('Authentication check failed');
+      }
+    };
+    checkAuth();
+    // Only run on mount, ignore authError in dependency to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true)
       try {
+        console.log('Starting to fetch admin dashboard data...');
+        
         // Fetch games
+        console.log('Fetching games...');
         const gamesRes = await getGames({ limit: 100 })
         const gamesData = gamesRes.data.games
         setGames(gamesData)
+        console.log('Games fetched:', gamesData.length);
 
         // Fetch users
+        console.log('Fetching users...');
         const usersRes = await getAllUsers({ limit: 100 })
         const usersData = usersRes.data.users
         setUsers(usersData)
+        console.log('Users fetched:', usersData.length);
 
         // Fetch payments
+        console.log('Fetching payments...');
         const paymentsRes = await getAllPayments({ limit: 100 })
         const paymentsData = paymentsRes.data.payments
         setPayments(paymentsData)
+        console.log('Payments fetched:', paymentsData.length);
 
         // Fetch statistics
+        console.log('Fetching statistics...');
         const userStatsRes = await getUserStats()
         const paymentStatsRes = await getPaymentStats()
 
@@ -142,16 +172,20 @@ export default function AdminPage() {
         const activeGames = gamesData.filter(game => game.status === 'active').length
         const featuredGames = gamesData.filter(game => game.featured).length
 
-        setStats({
+        const statsData = {
           totalGames: gamesData.length,
           totalUsers: userStatsRes.data.totalUsers,
           totalRevenue: paymentStatsRes.data.totalRevenue,
           totalPayments: paymentStatsRes.data.totalPayments,
           activeGames,
           featuredGames
-        })
+        }
+        
+        setStats(statsData)
+        console.log('Stats calculated:', statsData);
 
         // Fetch token balances for all users
+        console.log('Fetching token balances...');
         const tokenBalancesData: { [userId: string]: TokenBalance[] } = {}
         for (const user of usersData) {
           try {
@@ -163,9 +197,13 @@ export default function AdminPage() {
           }
         }
         setUserTokenBalances(tokenBalancesData)
+        console.log('Token balances fetched for', Object.keys(tokenBalancesData).length, 'users');
+
+        console.log('Admin dashboard data fetch completed successfully');
 
       } catch (e) {
-        console.error('Failed to fetch data:', e)
+        console.error('Failed to fetch admin dashboard data:', e)
+        setAuthError(`Failed to load dashboard data: ${(e as Error).message}`);
       } finally {
         setLoading(false)
       }
@@ -273,56 +311,61 @@ export default function AdminPage() {
 
   const handleSaveUser = async (updatedUser: User) => {
     try {
-      const result = await updateUser(updatedUser._id || updatedUser.id, {
-        username: updatedUser.username,
-        email: updatedUser.email,
-        role: updatedUser.role,
-        isActive: updatedUser.isActive
-      })
-      
+      // Only send fields that are present and valid
+      const data: Record<string, unknown> = {};
+      if (updatedUser.username) data.username = updatedUser.username;
+      if (updatedUser.email) data.email = updatedUser.email;
+      if (updatedUser.role) data.role = updatedUser.role;
+      if (typeof updatedUser.isActive === 'boolean') data.isActive = updatedUser.isActive;
+
+      const result = await updateUser(updatedUser._id || updatedUser.id, data);
+
       setUsers(users.map(user => 
         user._id === updatedUser._id ? result.data.user : user
-      ))
-      setEditingUser(null)
-      alert('User updated successfully')
-    } catch (error) {
-      console.error('Failed to update user:', error)
-      alert('Failed to update user')
+      ));
+      setEditingUser(null);
+      alert('User updated successfully');
+    } catch (error: unknown) {
+      console.error('Failed to update user:', error);
+      alert('Failed to update user');
     }
   }
-
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
 
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 bg-gray-800 border-gray-700">
-            <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600">
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="games" className="data-[state=active]:bg-purple-600">
-              <Gamepad2 className="w-4 h-4 mr-2" />
-              Games
-            </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-purple-600">
-              <Users className="w-4 h-4 mr-2" />
-              Users
-            </TabsTrigger>
-            <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600">
-              <Package className="w-4 h-4 mr-2" />
-              Tokens
-            </TabsTrigger>
-            <TabsTrigger value="payments" className="data-[state=active]:bg-purple-600">
-              <CreditCard className="w-4 h-4 mr-2" />
-              Payments
-            </TabsTrigger>
-          </TabsList>
+          <div className="mb-6 pt-4 pb-2">
+            <TabsList
+              className="flex w-full whitespace-nowrap gap-2 bg-gray-800 border-gray-700 rounded-lg p-1 overflow-x-auto justify-start lg:justify-center"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <TabsTrigger value="overview" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <BarChart3 className="w-4 h-4 mr-2" /> Overview
+              </TabsTrigger>
+              <TabsTrigger value="games" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <Gamepad2 className="w-4 h-4 mr-2" /> Games
+              </TabsTrigger>
+              <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <Users className="w-4 h-4 mr-2" /> Users
+              </TabsTrigger>
+              <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <Package className="w-4 h-4 mr-2" /> Tokens
+              </TabsTrigger>
+              <TabsTrigger value="payments" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <CreditCard className="w-4 h-4 mr-2" /> Payments
+              </TabsTrigger>
+            </TabsList>
+            <style>{`
+              .overflow-x-auto::-webkit-scrollbar { display: none; }
+              .overflow-x-auto { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+          </div>
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="bg-gray-800 border-gray-700">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium text-gray-300">Total Games</CardTitle>
@@ -435,7 +478,7 @@ export default function AdminPage() {
           <TabsContent value="games" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Game Management</h2>
-              <Button onClick={() => router.push('/admin/games/create')} className="bg-gradient-to-r from-purple-600 to-blue-600">
+              <Button size="sm" onClick={() => router.push('/admin/games/create')} className="bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 text-sm">
                 <Plus className="w-4 h-4 mr-2" /> Create Game
               </Button>
             </div>
@@ -541,10 +584,6 @@ export default function AdminPage() {
           <TabsContent value="users" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">User Management</h2>
-              <Button variant="outline" className="border-gray-600 text-gray-300 bg-transparent">
-                <Download className="w-4 h-4 mr-2" />
-                Export Users
-              </Button>
             </div>
 
             {/* User Filters */}
@@ -737,10 +776,6 @@ export default function AdminPage() {
           <TabsContent value="payments" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Payment Analytics</h2>
-              <Button variant="outline" className="border-gray-600 text-gray-300 bg-transparent">
-                <Download className="w-4 h-4 mr-2" />
-                Export Payments
-              </Button>
             </div>
 
             <Card className="bg-gray-800 border-gray-700">
@@ -813,10 +848,6 @@ export default function AdminPage() {
           <TabsContent value="tokens" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-2xl font-bold">Token Management</h2>
-              <Button variant="outline" className="border-gray-600 text-gray-300 bg-transparent">
-                <Download className="w-4 h-4 mr-2" />
-                Export Tokens
-              </Button>
             </div>
 
             {/* Token Filters */}

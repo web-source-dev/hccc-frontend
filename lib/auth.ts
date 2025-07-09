@@ -111,6 +111,7 @@ export const loginUser = async (data: LoginData): Promise<AuthResponse> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
 
     const result = await response.json();
@@ -139,6 +140,7 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(data),
+      credentials: 'include',
     });
 
     const result = await response.json();
@@ -162,19 +164,27 @@ export const signupUser = async (data: SignupData): Promise<AuthResponse> => {
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
     const token = getToken();
-    if (!token) return null;
+    if (!token) {
+      console.log('No token found in localStorage');
+      return null;
+    }
+
+    console.log('Fetching current user with token:', token.substring(0, 20) + '...');
 
     const response = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: getAuthHeaders(),
+      credentials: 'include',
     });
 
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Failed to get current user:', result);
       removeToken();
       return null;
     }
 
+    console.log('Current user fetched successfully:', result.data.user);
     return result.data.user;
   } catch (error) {
     console.error('Error getting current user:', error);
@@ -222,6 +232,11 @@ export const getAllUsers = async (params?: {
   };
 }> => {
   try {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -231,6 +246,8 @@ export const getAllUsers = async (params?: {
       });
     }
 
+    console.log('Fetching all users with token:', token.substring(0, 20) + '...');
+
     const response = await fetch(`${API_BASE_URL}/auth/users?${queryParams}`, {
       headers: getAuthHeaders(),
     });
@@ -238,11 +255,14 @@ export const getAllUsers = async (params?: {
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Failed to fetch users:', result);
       throw new Error(result.message || 'Failed to fetch users');
     }
 
+    console.log('Users fetched successfully:', result.data.users.length, 'users');
     return result;
   } catch (error) {
+    console.error('Error fetching users:', error);
     throw error;
   }
 };
@@ -258,6 +278,13 @@ export const getUserStats = async (): Promise<{
   };
 }> => {
   try {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    console.log('Fetching user stats with token:', token.substring(0, 20) + '...');
+
     const response = await fetch(`${API_BASE_URL}/auth/stats`, {
       headers: getAuthHeaders(),
     });
@@ -265,11 +292,14 @@ export const getUserStats = async (): Promise<{
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Failed to fetch user stats:', result);
       throw new Error(result.message || 'Failed to fetch user statistics');
     }
 
+    console.log('User stats fetched successfully:', result.data);
     return result;
   } catch (error) {
+    console.error('Error fetching user stats:', error);
     throw error;
   }
 };

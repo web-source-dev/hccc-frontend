@@ -161,6 +161,11 @@ export const getAllPayments = async (params?: {
   };
 }> => {
   try {
+    const token = getAuthHeaders().Authorization;
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -170,6 +175,8 @@ export const getAllPayments = async (params?: {
       });
     }
 
+    console.log('Fetching all payments with token:', token.substring(0, 20) + '...');
+
     const response = await fetch(`${API_BASE_URL}/payments/admin/all?${queryParams}`, {
       headers: getAuthHeaders(),
     });
@@ -177,11 +184,14 @@ export const getAllPayments = async (params?: {
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Failed to fetch payments:', result);
       throw new Error(result.message || 'Failed to fetch payments');
     }
 
+    console.log('Payments fetched successfully:', result.data.payments.length, 'payments');
     return result;
   } catch (error) {
+    console.error('Error fetching payments:', error);
     throw error;
   }
 };
@@ -199,6 +209,13 @@ export const getPaymentStats = async (): Promise<{
   };
 }> => {
   try {
+    const token = getAuthHeaders().Authorization;
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    console.log('Fetching payment stats with token:', token.substring(0, 20) + '...');
+
     const response = await fetch(`${API_BASE_URL}/payments/admin/stats`, {
       headers: getAuthHeaders(),
     });
@@ -206,11 +223,14 @@ export const getPaymentStats = async (): Promise<{
     const result = await response.json();
 
     if (!response.ok) {
+      console.error('Failed to fetch payment stats:', result);
       throw new Error(result.message || 'Failed to fetch payment statistics');
     }
 
+    console.log('Payment stats fetched successfully:', result.data);
     return result;
   } catch (error) {
+    console.error('Error fetching payment stats:', error);
     throw error;
   }
 }; 

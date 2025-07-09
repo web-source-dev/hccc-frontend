@@ -42,7 +42,7 @@ function TokenPageContent() {
   }, [gameId]);
 
   const handlePurchase = () => {
-    if (!selectedPackage || !game) return;
+    if (selectedPackage === null || !game) return;
     
     const selectedTokenPackage = game.tokenPackages[selectedPackage];
     router.push(`/checkout?gameId=${game._id}&packageIndex=${selectedPackage}&tokens=${selectedTokenPackage.tokens}&price=${selectedTokenPackage.price}&location=${location}`);

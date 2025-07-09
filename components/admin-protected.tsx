@@ -79,14 +79,14 @@ export default function AdminProtected({ children }: AdminProtectedProps) {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
           <div className="flex gap-2">
-            <Button 
+            <Button
               onClick={() => router.push('/')}
               variant="outline"
               className="flex-1"
             >
               Go Home
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 // Store current URL for redirect after login
                 const currentUrl = window.location.href;
@@ -118,18 +118,6 @@ export default function AdminProtected({ children }: AdminProtectedProps) {
             <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
               Admin
             </span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-gray-300 text-sm">
-              Welcome, {user.username}
-            </span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => router.push('/')}
-            >
-              Exit Admin
-            </Button>
           </div>
         </div>
       </div>

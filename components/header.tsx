@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Settings } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { logoutUser, createLoginUrl, createSignupUrl, useAuth } from '@/lib/auth';
+import { logoutUser, createLoginUrl, createSignupUrl, useAuth, isAdmin } from '@/lib/auth';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -89,16 +89,13 @@ export default function Header() {
                       <span>My Tokens</span>
                     </Link>
                   </DropdownMenuItem>
-                  {user.role === 'admin' && (
-                    <>
-                      <DropdownMenuSeparator className="bg-gray-600" />
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin" className="flex items-center space-x-2 cursor-pointer">
-                          <Settings className="w-4 h-4" />
-                          <span>Admin Dashboard</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
+                  {isAdmin(user) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin" className="flex items-center space-x-2 cursor-pointer">
+                        <Shield className="w-4 h-4" />
+                        <span>Admin Dashboard</span>
+                      </Link>
+                    </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator className="bg-gray-600" />
                   <DropdownMenuItem 
@@ -220,16 +217,16 @@ export default function Header() {
                       <Package className="w-4 h-4 mr-2 inline" /> My Tokens
                     </Link>
                     
-                    {user.role === 'admin' && (
+                    {isAdmin(user) && (
                       <Link 
                         href="/admin" 
                         className="block px-4 py-2 hover:bg-white/10 transition-colors"
                         onClick={() => setIsMenuOpen(false)}
                       >
-                        <Settings className="w-4 h-4 mr-2 inline" /> Admin Dashboard
+                        <Shield className="w-4 h-4 mr-2 inline" /> Admin Dashboard
                       </Link>
                     )}
-                    
+
                     <button
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 hover:bg-white/10 transition-colors text-red-400"

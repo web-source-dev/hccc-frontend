@@ -173,17 +173,18 @@ export default function LandingPage() {
           HCCC GAMEROOM
         </h1>
         <div className="mb-8 flex justify-center">
-          <div className="relative w-[320px] h-[320px] md:w-[400px] md:h-[400px]">
+          <div className="w-[320px] h-[320px] md:w-[400px] md:h-[400px] pl-[13px]">
             <Image 
               src="/image.gif" 
               alt="HCCC Gameroom Animation" 
-              fill
-              className="object-cover"
+              width={320}
+              height={320}
+              className="object-cover w-full h-full"
               priority
             />
           </div>
         </div>
-        <p className="text-xl md:text-2xl text-yellow-400 mb-8 max-w-3xl mx-auto">
+        <p className="text-xl md:text-2xl text-yellow-400 mb-8 max-w-3xl mx-auto text-center flex justify-center">
           Central Texas&apos;s Premier Gaming Destination
         </p>
         <div className="flex flex-wrap justify-center gap-8 text-lg">
