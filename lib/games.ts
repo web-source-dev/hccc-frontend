@@ -9,7 +9,7 @@ export interface Game {
   status: 'active' | 'inactive' | 'maintenance';
   locations: Array<{
     name: string;
-    available: boolean;
+    available: boolean
   }>;
   tokenPackages: Array<{
     tokens: number;
