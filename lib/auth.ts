@@ -3,7 +3,8 @@ import { useState, useEffect } from 'react';
 export interface User {
   id: string;
   _id?: string;
-  username: string;
+  firstname: string;
+  lastname: string;
   email: string;
   role: 'user' | 'admin';
   isActive?: boolean;
@@ -26,7 +27,8 @@ export interface LoginData {
 }
 
 export interface SignupData {
-  username: string;
+  firstname: string;
+  lastname: string;
   email: string;
   password: string;
 }
@@ -317,14 +319,26 @@ export const getUserTokenBalances = async (): Promise<{
       };
       location: string;
       tokens: number;
+      pendingTokens: number;
+      tokensScheduledFor: string | null;
       createdAt: string;
       updatedAt: string;
+    }>;
+    pendingTokens: Array<{
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      scheduledFor: string;
     }>;
   };
 }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/me/tokens`, {
       headers: getAuthHeaders(),
+      credentials: 'include',
     });
 
     const result = await response.json();
@@ -352,14 +366,26 @@ export const getAdminUserTokenBalances = async (userId: string): Promise<{
       };
       location: string;
       tokens: number;
+      pendingTokens: number;
+      tokensScheduledFor: string | null;
       createdAt: string;
       updatedAt: string;
+    }>;
+    pendingTokens: Array<{
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      scheduledFor: string;
     }>;
   };
 }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/${userId}/tokens`, {
       headers: getAuthHeaders(),
+      credentials: 'include',
     });
 
     const result = await response.json();
@@ -417,7 +443,8 @@ export const adjustUserTokenBalance = async (
 export const updateUser = async (
   userId: string,
   data: {
-    username?: string;
+    firstname?: string;
+    lastname?: string;
     email?: string;
     role?: 'user' | 'admin';
     isActive?: boolean;
@@ -429,9 +456,17 @@ export const updateUser = async (
   };
 }> => {
   try {
+    const token = getToken();
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
     const response = await fetch(`${API_BASE_URL}/auth/${userId}`, {
       method: 'PUT',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
 

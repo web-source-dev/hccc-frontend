@@ -4,13 +4,14 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { ArrowLeft, CreditCard, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, CheckCircle, XCircle, Loader2, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { getGame, type Game } from '@/lib/games';
 import { createPaymentIntent, confirmPayment, type Payment } from '@/lib/payments';
 import { isAuthenticated, setRedirectUrl } from '@/lib/auth';
+import { getTimeDisclaimer, formatLocationName } from '@/lib/utils';
 
 // Load Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -47,6 +48,7 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess }:
   const [submitted, setSubmitted] = useState(false);
 
   const tokenPackage = game.tokenPackages[packageIndex];
+  const timeDisclaimer = getTimeDisclaimer(location);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -106,6 +108,16 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess }:
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
+        {/* Time Disclaimer Alert */}
+        {timeDisclaimer.show && (
+          <Alert className="border-orange-500 bg-orange-950/20 text-orange-200">
+            <Clock className="h-4 w-4" />
+            <AlertDescription className="text-sm font-medium">
+              {timeDisclaimer.message}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Card Details
@@ -129,7 +141,7 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess }:
           </div>
           <div className="flex justify-between">
             <span className="text-gray-300">Location:</span>
-            <span className="text-white font-medium">{location}</span>
+            <span className="text-white font-medium">{formatLocationName(location)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-300">Tokens:</span>
@@ -140,6 +152,16 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess }:
             <span className="text-gold-400">${tokenPackage.price}</span>
           </div>
         </div>
+
+        {/* Additional time disclaimer in payment summary */}
+        {timeDisclaimer.show && (
+          <div className="bg-orange-950/30 border border-orange-500/50 rounded-lg p-3">
+            <p className="text-orange-200 text-xs font-medium flex items-center justify-center">
+              <Clock className="w-3 h-3 mr-1" />
+              {timeDisclaimer.message}
+            </p>
+          </div>
+        )}
       </div>
 
       <Button

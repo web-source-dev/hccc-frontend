@@ -50,6 +50,8 @@ interface GameTokenData {
   gameImage: string;
   category: string;
   totalTokens: number;
+  pendingTokens: number;
+  tokensScheduledFor: string | null;
   totalSpent: number;
   purchases: number;
   lastPurchase: string | null;
@@ -89,13 +91,16 @@ interface TokenBalance {
   };
   location: string;
   tokens: number;
+  pendingTokens: number;
+  tokensScheduledFor: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 function ProfileContent() {
   const [user, setUser] = useState<User | null>(null)
-  const [userName, setUserName] = useState('')
+  const [userFirstname, setUserFirstname] = useState('')
+  const [userLastname, setUserLastname] = useState('')
   const [userEmail, setUserEmail] = useState('')
   const [loading, setLoading] = useState(true)
   const [payments, setPayments] = useState<Payment[]>([])
@@ -118,6 +123,7 @@ function ProfileContent() {
     const successfulPayments = payments.filter(p => p.status === 'succeeded')
     const totalSpent = successfulPayments.reduce((sum, p) => sum + p.amount, 0)
     const totalTokens = tokenBalances.reduce((sum, balance) => sum + balance.tokens, 0)
+    const totalPendingTokens = tokenBalances.reduce((sum, balance) => sum + balance.pendingTokens, 0)
     const uniqueGames = new Set(tokenBalances.map(b => b.game._id)).size
     
     // Calculate favorite category from token balances
@@ -137,7 +143,7 @@ function ProfileContent() {
     const unlockedAchievements = achievements.filter(a => a.unlocked)
 
     return {
-      totalTokens,
+      totalTokens: totalTokens + totalPendingTokens, // Include pending tokens in total
       totalSpent,
       totalPurchases: payments.length,
       successfulPurchases: successfulPayments.length,
@@ -165,7 +171,8 @@ function ProfileContent() {
           return
         }
         setUser(currentUser)
-        setUserName(currentUser.username)
+        setUserFirstname(currentUser.firstname)
+        setUserLastname(currentUser.lastname)
         setUserEmail(currentUser.email)
 
         // Load payments, games, and token balances in parallel
@@ -205,6 +212,8 @@ function ProfileContent() {
           gameImage: game.image,
           category: game.category,
           totalTokens: 0,
+          pendingTokens: 0,
+          tokensScheduledFor: null,
           totalSpent: 0,
           purchases: 0,
           lastPurchase: null,
@@ -215,6 +224,8 @@ function ProfileContent() {
       }
 
       gameData[key].totalTokens = balance.tokens
+      gameData[key].pendingTokens = balance.pendingTokens
+      gameData[key].tokensScheduledFor = balance.tokensScheduledFor
     })
 
     // Add payment data for spending and purchase history
@@ -233,9 +244,10 @@ function ProfileContent() {
       }
     })
 
-    // Calculate progress for each game
+    // Calculate progress for each game (include pending tokens)
     Object.values(gameData).forEach(game => {
-      game.progress = Math.min((game.totalTokens / game.nextMilestone) * 100, 100)
+      const totalTokensIncludingPending = game.totalTokens + game.pendingTokens
+      game.progress = Math.min((totalTokensIncludingPending / game.nextMilestone) * 100, 100)
     })
 
     return Object.values(gameData)
@@ -391,7 +403,7 @@ function ProfileContent() {
               <Avatar className="w-24 h-24 border-4 border-purple-600 group-hover:scale-105 transition-transform duration-300">
                 <AvatarImage src="/placeholder-user.jpg" alt="Profile" />
                 <AvatarFallback className="text-3xl bg-gradient-to-r from-purple-600 to-blue-600">
-                  {userName.split(' ').map(n => n[0]).join('')}
+                  {`${userFirstname.charAt(0)}${userLastname.charAt(0)}`}
                 </AvatarFallback>
               </Avatar>
               <Button
@@ -406,8 +418,13 @@ function ProfileContent() {
               {isEditing ? (
                 <div className="space-y-3">
                   <Input
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
+                    value={userFirstname}
+                    onChange={(e) => setUserFirstname(e.target.value)}
+                    className="text-2xl font-bold bg-gray-800 border-gray-600"
+                  />
+                  <Input
+                    value={userLastname}
+                    onChange={(e) => setUserLastname(e.target.value)}
                     className="text-2xl font-bold bg-gray-800 border-gray-600"
                   />
                   <Input
@@ -427,7 +444,7 @@ function ProfileContent() {
               ) : (
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
-                    <h1 className="text-3xl font-bold">{userName}</h1>
+                    <h1 className="text-3xl font-bold">{`${userFirstname} ${userLastname}`}</h1>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -461,6 +478,9 @@ function ProfileContent() {
               </TabsTrigger>
               <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
                 My Tokens
+              </TabsTrigger>
+              <TabsTrigger value="purchased-tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
+                Purchased Tokens
               </TabsTrigger>
               <TabsTrigger value="history" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold">
                 Purchase History
@@ -587,9 +607,23 @@ function ProfileContent() {
                       
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Total Tokens:</span>
+                          <span className="text-gray-400">Available Tokens:</span>
                           <span className="text-white font-semibold">{game.totalTokens}</span>
                         </div>
+                        {game.pendingTokens > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-orange-400 flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Pending Tokens:
+                            </span>
+                            <span className="text-orange-400 font-semibold">{game.pendingTokens}</span>
+                          </div>
+                        )}
+                        {game.tokensScheduledFor && (
+                          <div className="text-xs text-orange-300 bg-orange-900/20 p-2 rounded border border-orange-700">
+                            ⏰ Tokens will be added on {new Date(game.tokensScheduledFor).toLocaleDateString()} at {new Date(game.tokensScheduledFor).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </div>
+                        )}
                         <div className="flex justify-between text-sm">
                           <span className="text-gray-400">Total Spent:</span>
                           <span className="text-white font-semibold">${game.totalSpent.toFixed(2)}</span>
@@ -630,6 +664,108 @@ function ProfileContent() {
                 </Link>
               </div>
             )}
+          </TabsContent>
+
+          {/* Purchased Tokens Tab */}
+          <TabsContent value="purchased-tokens" className="space-y-6">
+            <Card className="bg-gray-800 border-gray-700">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Package className="w-5 h-5" />
+                  <span>Purchased & Scheduled Tokens</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {payments.length > 0 ? (
+                  <div className="space-y-4">
+                    {payments
+                      .filter(payment => payment.status === 'succeeded')
+                      .map((payment) => {
+                        const game = games.find(g => g._id === payment.game._id)
+                        const isScheduled = payment.tokensScheduledFor && new Date(payment.tokensScheduledFor) > new Date()
+                        const isPending = payment.tokensScheduledFor && !payment.tokensAdded
+
+                        return (
+                          <div key={payment._id} className="p-4 rounded-lg border border-gray-700 hover:bg-gray-700/50 transition-colors">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-gray-700 rounded-lg flex items-center justify-center">
+                                  <Image
+                                    src={game?.image || '/placeholder.jpg'}
+                                    alt={game?.name || 'Game'}
+                                    className="w-8 h-8 rounded object-cover"
+                                    width={32}
+                                    height={32}
+                                  />
+                                </div>
+                                <div>
+                                  <div className="text-white font-medium">{game?.name || 'Unknown Game'}</div>
+                                  <div className="text-gray-400 text-sm">
+                                    {payment.tokenPackage.tokens} tokens • {payment.location}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <div className="text-white font-semibold">${payment.amount.toFixed(2)}</div>
+                                <div className="text-gray-400 text-sm">
+                                  {new Date(payment.createdAt).toLocaleDateString()}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Token Status */}
+                            <div className="space-y-2">
+                              {isScheduled && payment.tokensScheduledFor && (
+                                <div className="flex items-center space-x-2 p-3 bg-orange-900/20 border border-orange-700 rounded-lg">
+                                  <Clock className="w-4 h-4 text-orange-400" />
+                                  <div className="flex-1">
+                                    <div className="text-orange-400 font-medium">Scheduled for Addition</div>
+                                                                       <div className="text-orange-300 text-sm">
+                                     {payment.tokenPackage.tokens} tokens will be added on{' '}
+                                     {new Date(payment.tokensScheduledFor).toLocaleDateString()} at{' '}
+                                     {new Date(payment.tokensScheduledFor).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                   </div>
+                                  </div>
+                                </div>
+                              )}
+
+                                                             {isPending && !isScheduled && (
+                                 <div className="flex items-center space-x-2 p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
+                                   <AlertCircle className="w-4 h-4 text-yellow-400" />
+                                   <div className="flex-1">
+                                     <div className="text-yellow-400 font-medium">Pending Tokens</div>
+                                     <div className="text-yellow-300 text-sm">
+                                       {payment.tokenPackage.tokens} tokens are pending addition
+                                     </div>
+                                   </div>
+                                 </div>
+                               )}
+
+                              {!isScheduled && !isPending && (
+                                <div className="flex items-center space-x-2 p-3 bg-green-900/20 border border-green-700 rounded-lg">
+                                  <CheckCircle className="w-4 h-4 text-green-400" />
+                                  <div className="flex-1">
+                                    <div className="text-green-400 font-medium">Tokens Added</div>
+                                    <div className="text-green-300 text-sm">
+                                      {payment.tokenPackage.tokens} tokens have been added to your account
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No purchased tokens</p>
+                    <p className="text-sm">Your token purchases will appear here</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Purchase History Tab */}

@@ -313,7 +313,8 @@ export default function AdminPage() {
     try {
       // Only send fields that are present and valid
       const data: Record<string, unknown> = {};
-      if (updatedUser.username) data.username = updatedUser.username;
+      if (updatedUser.firstname) data.firstname = updatedUser.firstname;
+    if (updatedUser.lastname) data.lastname = updatedUser.lastname;
       if (updatedUser.email) data.email = updatedUser.email;
       if (updatedUser.role) data.role = updatedUser.role;
       if (typeof updatedUser.isActive === 'boolean') data.isActive = updatedUser.isActive;
@@ -458,7 +459,7 @@ export default function AdminPage() {
                       <div key={payment._id} className="flex items-center justify-between">
                         <div>
                           <p className="text-white font-medium">{payment.metadata.gameName}</p>
-                          <p className="text-gray-400 text-sm">{payment.metadata.userName}</p>
+                          <p className="text-gray-400 text-sm">{payment.metadata.userFirstname} {payment.metadata.userLastname}</p>
                         </div>
                         <div className="text-right">
                           <p className="text-white font-medium">{formatCurrency(payment.amount)}</p>
@@ -636,7 +637,8 @@ export default function AdminPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="createdAt">Join Date</SelectItem>
-                        <SelectItem value="username">Username</SelectItem>
+                        <SelectItem value="firstname">First Name</SelectItem>
+                        <SelectItem value="lastname">Last Name</SelectItem>
                         <SelectItem value="email">Email</SelectItem>
                         <SelectItem value="lastLogin">Last Login</SelectItem>
                       </SelectContent>
@@ -677,8 +679,9 @@ export default function AdminPage() {
                     {users
                       .filter(user => {
                         const matchesSearch = !userFilters.search || 
-                          user.username.toLowerCase().includes(userFilters.search.toLowerCase()) ||
-                          user.email.toLowerCase().includes(userFilters.search.toLowerCase())
+                                          user.firstname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
+                user.lastname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
+                user.email.toLowerCase().includes(userFilters.search.toLowerCase())
                         const matchesRole = userFilters.role === 'all' || !userFilters.role || user.role === userFilters.role
                         const matchesStatus = userFilters.status === 'all' || !userFilters.status || 
                           (userFilters.status === 'active' && user.isActive !== false) ||
@@ -699,7 +702,7 @@ export default function AdminPage() {
                           <TableRow key={user._id || user.id} className="border-gray-700">
                             <TableCell>
                               <div>
-                                <p className="text-white font-medium">{user.username}</p>
+                                <p className="text-white font-medium">{user.firstname} {user.lastname}</p>
                                 <p className="text-gray-400 text-sm">{user.email}</p>
                               </div>
                             </TableCell>
@@ -808,7 +811,7 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>
                           <div>
-                            <p className="text-white font-medium">{payment.metadata.userName}</p>
+                            <p className="text-white font-medium">{payment.metadata.userFirstname} {payment.metadata.userLastname}</p>
                             <p className="text-gray-400 text-sm">{payment.metadata.userEmail}</p>
                           </div>
                         </TableCell>
@@ -860,7 +863,7 @@ export default function AdminPage() {
                   <div>
                     <Label className="text-gray-400">Search User</Label>
                     <Input
-                      placeholder="Search by username..."
+                      placeholder="Search by name..."
                       value={tokenFilters.search}
                       onChange={(e) => setTokenFilters(prev => ({ ...prev, search: e.target.value }))}
                       className="bg-gray-700 border-gray-600 text-white"
@@ -947,7 +950,7 @@ export default function AdminPage() {
                         const user = users.find(u => u._id === userId || u.id === userId)
                         
                         const matchesSearch = !tokenFilters.search || 
-                          (user && user.username.toLowerCase().includes(tokenFilters.search.toLowerCase()))
+                          (user && `${user.firstname} ${user.lastname}`.toLowerCase().includes(tokenFilters.search.toLowerCase()))
                         const matchesLocation = tokenFilters.location === 'all' || !tokenFilters.location || balance.location === tokenFilters.location
                         const matchesGame = tokenFilters.game === 'all' || !tokenFilters.game || balance.game._id === tokenFilters.game
                         
@@ -960,8 +963,8 @@ export default function AdminPage() {
                           case 'user':
                             const userA = users.find(u => u._id === a.userId || u.id === a.userId)
                             const userB = users.find(u => u._id === b.userId || u.id === b.userId)
-                            aValue = userA?.username || ''
-                            bValue = userB?.username || ''
+                            aValue = userA?.firstname + ' ' + userA?.lastname || ''
+                            bValue = userB?.firstname + ' ' + userB?.lastname || ''
                             break
                           case 'game':
                             aValue = a.balance.game.name
@@ -995,7 +998,7 @@ export default function AdminPage() {
                           <TableRow key={`${userId}-${balance.game._id}-${balance.location}`} className="border-gray-700">
                             <TableCell>
                               <div>
-                                <p className="text-white font-medium">{user?.username || 'Unknown User'}</p>
+                                <p className="text-white font-medium">{user?.firstname + ' ' + user?.lastname || 'Unknown User'}</p>
                                 <p className="text-gray-400 text-sm">{user?.email || 'N/A'}</p>
                               </div>
                             </TableCell>
@@ -1084,13 +1087,13 @@ export default function AdminPage() {
           <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
             <DialogContent className="max-w-2xl bg-gray-900 border-gray-800">
               <DialogHeader>
-                <DialogTitle className="text-white">User Details - {selectedUser.username}</DialogTitle>
+                <DialogTitle className="text-white">User Details - {selectedUser.firstname} {selectedUser.lastname}</DialogTitle>
               </DialogHeader>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-gray-400">Username</Label>
-                    <div className="text-white font-medium">{selectedUser.username}</div>
+                    <Label className="text-gray-400">Full Name</Label>
+                    <div className="text-white font-medium">{selectedUser.firstname} {selectedUser.lastname}</div>
                   </div>
                   <div>
                     <Label className="text-gray-400">Email</Label>
@@ -1126,7 +1129,7 @@ export default function AdminPage() {
             <DialogContent className="max-w-4xl bg-gray-900 border-gray-800">
               <DialogHeader>
                 <DialogTitle className="text-white">
-                  Manage Tokens - {tokenAdjustmentModal.user.username}
+                  Manage Tokens - {tokenAdjustmentModal.user.firstname} {tokenAdjustmentModal.user.lastname}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-6 py-4">
@@ -1251,14 +1254,22 @@ export default function AdminPage() {
           <Dialog open={!!editingUser} onOpenChange={() => setEditingUser(null)}>
             <DialogContent className="max-w-md bg-gray-900 border-gray-800">
               <DialogHeader>
-                <DialogTitle className="text-white">Edit User - {editingUser.username}</DialogTitle>
+                <DialogTitle className="text-white">Edit User - {editingUser.firstname} {editingUser.lastname}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div>
-                  <Label className="text-gray-400">Username</Label>
+                  <Label className="text-gray-400">First Name</Label>
                   <Input
-                    value={editingUser.username}
-                    onChange={(e) => setEditingUser(prev => prev ? { ...prev, username: e.target.value } : null)}
+                    value={editingUser.firstname}
+                    onChange={(e) => setEditingUser(prev => prev ? { ...prev, firstname: e.target.value } : null)}
+                    className="bg-gray-700 border-gray-600 text-white"
+                  />
+                </div>
+                <div>
+                  <Label className="text-gray-400">Last Name</Label>
+                  <Input
+                    value={editingUser.lastname}
+                    onChange={(e) => setEditingUser(prev => prev ? { ...prev, lastname: e.target.value } : null)}
                     className="bg-gray-700 border-gray-600 text-white"
                   />
                 </div>

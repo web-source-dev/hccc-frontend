@@ -16,11 +16,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { signupUser, setRedirectUrl, getRedirectUrl, removeRedirectUrl, createLoginUrl, dispatchAuthChange } from '@/lib/auth';
 
 const signupSchema = z.object({
-  username: z
+  firstname: z
     .string()
-    .min(3, 'Username must be at least 3 characters')
-    .max(30, 'Username must be less than 30 characters')
-    .regex(/^[a-zA-Z0-9_]+$/, 'Username can only contain letters, numbers, and underscores'),
+    .min(2, 'First name must be at least 2 characters')
+    .max(50, 'First name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces'),
+  lastname: z
+    .string()
+    .min(2, 'Last name must be at least 2 characters')
+    .max(50, 'Last name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces'),
   email: z.string().email('Please enter a valid email address'),
   password: z
     .string()
@@ -74,7 +79,8 @@ function SignupForm() {
 
     try {
       const response = await signupUser({
-        username: data.username,
+        firstname: data.firstname,
+        lastname: data.lastname,
         email: data.email,
         password: data.password,
       });
@@ -109,16 +115,30 @@ function SignupForm() {
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="firstname">First Name</Label>
         <Input
-          id="username"
+          id="firstname"
           type="text"
-          placeholder="Enter your username"
-          {...register('username')}
-          className={errors.username ? 'border-red-500' : ''}
+          placeholder="Enter your first name"
+          {...register('firstname')}
+          className={errors.firstname ? 'border-red-500' : ''}
         />
-        {errors.username && (
-          <p className="text-sm text-red-500">{errors.username.message}</p>
+        {errors.firstname && (
+          <p className="text-sm text-red-500">{errors.firstname.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="lastname">Last Name</Label>
+        <Input
+          id="lastname"
+          type="text"
+          placeholder="Enter your last name"
+          {...register('lastname')}
+          className={errors.lastname ? 'border-red-500' : ''}
+        />
+        {errors.lastname && (
+          <p className="text-sm text-red-500">{errors.lastname.message}</p>
         )}
       </div>
 
@@ -226,7 +246,7 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-black p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">

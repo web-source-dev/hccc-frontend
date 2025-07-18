@@ -11,6 +11,7 @@ export interface Payment {
   tokenPackage: {
     tokens: number;
     price: number;
+    name?: string;
   };
   location: string;
   stripePaymentIntentId: string;
@@ -20,10 +21,16 @@ export interface Payment {
   status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled' | 'expired';
   paymentMethod?: string;
   receiptUrl?: string;
+  // Token addition tracking
+  tokensScheduledFor?: string;
+  tokensAdded?: boolean;
+  pendingTokens?: number;
   metadata: {
     gameName: string;
-    userName: string;
+    userFirstname: string;
+    userLastname: string;
     userEmail: string;
+    timeRestriction?: string;
   };
   createdAt: string;
   updatedAt: string;

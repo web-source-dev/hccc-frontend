@@ -23,8 +23,12 @@ export default function Header() {
     setIsMenuOpen(!isMenuOpen);
   };
 
-  const getUserInitials = (username: string) => {
-    return username.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const getUserInitials = (firstname: string, lastname: string) => {
+    return `${firstname.charAt(0)}${lastname.charAt(0)}`.toUpperCase();
+  };
+
+  const getFullName = (firstname: string, lastname: string) => {
+    return `${firstname} ${lastname}`;
   };
 
   return (
@@ -67,12 +71,12 @@ export default function Header() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2 p-2 hover:bg-white/10">
                     <Avatar className="w-8 h-8 border-2 border-white/20">
-                      <AvatarImage src="/placeholder-user.jpg" alt={user.username} />
+                      <AvatarImage src="/placeholder-user.jpg" alt={getFullName(user.firstname, user.lastname)} />
                       <AvatarFallback className="bg-yellow-400 text-black text-sm font-semibold">
-                        {getUserInitials(user.username)}
+                        {getUserInitials(user.firstname, user.lastname)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-medium">{user.username}</span>
+                    <span className="text-sm font-medium">{getFullName(user.firstname, user.lastname)}</span>
                     <ChevronDown className="w-4 h-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -193,12 +197,12 @@ export default function Header() {
                   <div className="space-y-2">
                     <div className="px-4 py-2 flex items-center space-x-3">
                       <Avatar className="w-8 h-8 border-2 border-white/20">
-                        <AvatarImage src="/placeholder-user.jpg" alt={user.username} />
+                        <AvatarImage src="/placeholder-user.jpg" alt={getFullName(user.firstname, user.lastname)} />
                         <AvatarFallback className="bg-yellow-400 text-black text-xs font-semibold">
-                          {getUserInitials(user.username)}
+                          {getUserInitials(user.firstname, user.lastname)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-medium">{user.username}</span>
+                      <span className="text-sm font-medium">{getFullName(user.firstname, user.lastname)}</span>
                     </div>
                     
                     <Link 

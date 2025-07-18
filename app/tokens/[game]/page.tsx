@@ -4,9 +4,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ShoppingCart, Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, ShoppingCart, Loader2, Clock } from "lucide-react";
 import Link from "next/link";
 import { getGame, type Game } from "@/lib/games";
+import { getTimeDisclaimer, formatLocationName } from "@/lib/utils";
 import Image from "next/image";
 
 function TokenPageContent() {
@@ -19,6 +21,9 @@ function TokenPageContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+
+  // Get time disclaimer for current location
+  const timeDisclaimer = getTimeDisclaimer(location);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -81,11 +86,33 @@ function TokenPageContent() {
         <Link href="/" className="inline-flex items-center text-gold-400 hover:text-white mb-6 text-sm font-semibold rounded-full px-4 py-1 bg-black border border-gold-400 shadow-gold-400/30 shadow-sm transition-all">
           <ArrowLeft className="w-4 h-4 mr-1" /> Home
         </Link>
+        
+        {/* Time Disclaimer Alert */}
+        {timeDisclaimer.show && (
+          <Alert className="mb-4 border-orange-500 bg-orange-950/20 text-orange-200">
+            <Clock className="h-4 w-4" />
+            <AlertDescription className="text-sm font-medium">
+              {timeDisclaimer.message}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <Card className="bg-black border-2 border-gold-400 rounded-2xl shadow-2xl p-8 text-center relative overflow-hidden" style={{ boxShadow: '0 0 32px 0 #FFD70033, 0 2px 8px #0008' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 30%, #ffd70022 0%, transparent 70%)' }} />
           <Image src={image} alt={displayName} className="w-28 h-28 object-cover rounded-full mx-auto mb-4 border-4 border-gold-400 shadow-gold-400/40" width={112} height={112} />
           <h1 className="text-3xl font-extrabold mb-2 text-gold-400 uppercase tracking-widest" style={{ fontFamily: 'serif, system-ui' }}>{displayName}</h1>
-          {location && <div className="mb-4 text-gold-200 font-semibold text-xs tracking-wide uppercase">Location: {location.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</div>}
+          {location && <div className="mb-4 text-gold-200 font-semibold text-xs tracking-wide uppercase">Location: {formatLocationName(location)}</div>}
+          
+          {/* Additional time disclaimer inside card if applicable */}
+          {timeDisclaimer.show && (
+            <div className="mb-4 p-3 bg-orange-950/30 border border-orange-500/50 rounded-lg">
+              <p className="text-orange-200 text-xs font-medium flex items-center justify-center">
+                <Clock className="w-3 h-3 mr-1" />
+                {timeDisclaimer.message}
+              </p>
+            </div>
+          )}
+          
           <div className="grid grid-cols-1 gap-3 mb-6">
             {game.tokenPackages.map((pkg, idx) => (
               <button

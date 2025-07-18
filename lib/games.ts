@@ -19,7 +19,8 @@ export interface Game {
   totalSales: number;
   createdBy: {
     _id: string;
-    username: string;
+    firstname: string;
+    lastname: string;
   };
   createdAt: string;
   updatedAt: string;
