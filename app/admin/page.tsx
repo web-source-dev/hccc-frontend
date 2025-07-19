@@ -605,16 +605,18 @@ export default function AdminPage() {
                   </div>
                   <div>
                     <Label className="text-gray-400">Role</Label>
-                    <Select value={userFilters.role} onValueChange={(value) => setUserFilters(prev => ({ ...prev, role: value }))}>
-                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
-                        <SelectValue placeholder="All roles" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All roles</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
+                                            <Select value={userFilters.role} onValueChange={(value) => setUserFilters(prev => ({ ...prev, role: value }))}>
+                          <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                            <SelectValue placeholder="All roles" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All roles</SelectItem>
+                            <SelectItem value="user">User</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                            <SelectItem value="cashierCedar">Cedar Park Cashier</SelectItem>
+                            <SelectItem value="cashierLiberty">Liberty Hill Cashier</SelectItem>
+                          </SelectContent>
+                        </Select>
                   </div>
                   <div>
                     <Label className="text-gray-400">Status</Label>
@@ -1286,7 +1288,7 @@ export default function AdminPage() {
                   <Label className="text-gray-400">Role</Label>
                   <Select 
                     value={editingUser.role} 
-                    onValueChange={(value) => setEditingUser(prev => prev ? { ...prev, role: value as 'user' | 'admin' } : null)}
+                    onValueChange={(value) => setEditingUser(prev => prev ? { ...prev, role: value as 'user' | 'admin' | 'cashierCedar' | 'cashierLiberty' } : null)}
                   >
                     <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                       <SelectValue />
@@ -1294,6 +1296,8 @@ export default function AdminPage() {
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="cashierCedar">Cedar Park Cashier</SelectItem>
+                      <SelectItem value="cashierLiberty">Liberty Hill Cashier</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

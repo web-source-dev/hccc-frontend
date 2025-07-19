@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Shield } from 'lucide-react';
+import { Menu, X, User as UserIcon, LogOut, ChevronDown, Package, Shield, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { logoutUser, createLoginUrl, createSignupUrl, useAuth, isAdmin } from '@/lib/auth';
+import { logoutUser, createLoginUrl, createSignupUrl, useAuth, isAdmin, isCashier } from '@/lib/auth';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -98,6 +98,14 @@ export default function Header() {
                       <Link href="/admin" className="flex items-center space-x-2 cursor-pointer">
                         <Shield className="w-4 h-4" />
                         <span>Admin Dashboard</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {isCashier(user) && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/cashier" className="flex items-center space-x-2 cursor-pointer">
+                        <CreditCard className="w-4 h-4" />
+                        <span>Cashier Dashboard</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
@@ -228,6 +236,15 @@ export default function Header() {
                         onClick={() => setIsMenuOpen(false)}
                       >
                         <Shield className="w-4 h-4 mr-2 inline" /> Admin Dashboard
+                      </Link>
+                    )}
+                    {isCashier(user) && (
+                      <Link 
+                        href="/cashier" 
+                        className="block px-4 py-2 hover:bg-white/10 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <CreditCard className="w-4 h-4 mr-2 inline" /> Cashier Dashboard
                       </Link>
                     )}
 

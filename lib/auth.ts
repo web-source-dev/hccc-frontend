@@ -6,7 +6,7 @@ export interface User {
   firstname: string;
   lastname: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'cashierCedar' | 'cashierLiberty';
   isActive?: boolean;
   createdAt?: string;
   lastLogin?: string;
@@ -214,6 +214,24 @@ export const isAuthenticated = (): boolean => {
 // Check if user is admin
 export const isAdmin = (user: User | null): boolean => {
   return user?.role === 'admin';
+};
+
+export const isCashier = (user: User | null): boolean => {
+  return user?.role === 'cashierCedar' || user?.role === 'cashierLiberty';
+};
+
+export const isCashierCedar = (user: User | null): boolean => {
+  return user?.role === 'cashierCedar';
+};
+
+export const isCashierLiberty = (user: User | null): boolean => {
+  return user?.role === 'cashierLiberty';
+};
+
+export const getCashierLocation = (user: User | null): string | null => {
+  if (user?.role === 'cashierCedar') return 'Cedar Park';
+  if (user?.role === 'cashierLiberty') return 'Liberty Hill';
+  return null;
 };
 
 // Get all users (admin only)
@@ -446,7 +464,7 @@ export const updateUser = async (
     firstname?: string;
     lastname?: string;
     email?: string;
-    role?: 'user' | 'admin';
+    role?: 'user' | 'admin' | 'cashierCedar' | 'cashierLiberty';
     isActive?: boolean;
   }
 ): Promise<{
@@ -582,5 +600,139 @@ export const useAuth = () => {
 export const dispatchAuthChange = () => {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event('auth-change'));
+  }
+};
+
+// Cashier-specific functions
+
+export const getCashierUsers = async (params?: {
+  limit?: number;
+  page?: number;
+  search?: string;
+}): Promise<{
+  success: boolean;
+  data: {
+    users: User[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
+}> => {
+  try {
+    const searchParams = new URLSearchParams();
+    if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
+    if (params?.search) searchParams.append('search', params.search);
+
+    const response = await fetch(`${API_BASE_URL}/auth/cashier/users?${searchParams}`, {
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Get cashier users error:', error);
+    throw new Error('Failed to fetch users');
+  }
+};
+
+export const getCashierTokenBalances = async (location?: string): Promise<{
+  success: boolean;
+  data: {
+    balances: Array<{
+      _id: string;
+      user: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+      };
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      pendingTokens: number;
+      tokensScheduledFor: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    pendingTokens: Array<{
+      user: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+      };
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      scheduledFor: string;
+    }>;
+    allowedLocations: string[];
+  };
+}> => {
+  try {
+    const searchParams = new URLSearchParams();
+    if (location) searchParams.append('location', location);
+
+    const response = await fetch(`${API_BASE_URL}/auth/cashier/tokens?${searchParams}`, {
+      headers: getAuthHeaders()
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Get cashier token balances error:', error);
+    throw new Error('Failed to fetch token balances');
+  }
+};
+
+export const adjustCashierTokenBalance = async (
+  userId: string, 
+  gameId: string, 
+  location: string, 
+  delta: number
+): Promise<{
+  success: boolean;
+  data: {
+    balance: {
+      _id: string;
+      user: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+      };
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/cashier/tokens/adjust`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ userId, gameId, location, delta })
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Cashier adjust token balance error:', error);
+    throw new Error('Failed to adjust token balance');
   }
 }; 
