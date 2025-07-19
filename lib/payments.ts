@@ -150,6 +150,30 @@ export const getPaymentDetails = async (paymentId: string): Promise<{
   }
 };
 
+// Get payment details by Stripe payment intent ID
+export const getPaymentByIntent = async (paymentIntentId: string): Promise<{
+  success: boolean;
+  data: {
+    payment: Payment;
+  };
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/payments/by-intent/${paymentIntentId}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to fetch payment details');
+    }
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Get all payments (admin only)
 export const getAllPayments = async (params?: {
   limit?: number;
