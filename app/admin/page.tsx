@@ -793,7 +793,6 @@ export default function AdminPage() {
                       <TableHead className="text-gray-300">Amount</TableHead>
                       <TableHead className="text-gray-300">Status</TableHead>
                       <TableHead className="text-gray-300">Date</TableHead>
-                      <TableHead className="text-gray-300">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -829,17 +828,6 @@ export default function AdminPage() {
                         </TableCell>
                         <TableCell>
                           <div className="text-gray-300">{formatDate(payment.createdAt)}</div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              className="border-gray-600 bg-transparent"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

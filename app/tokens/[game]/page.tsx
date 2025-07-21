@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeft, ShoppingCart, Loader2, Clock } from "lucide-react";
 import Link from "next/link";
 import { getGame, type Game } from "@/lib/games";
-import { getTimeDisclaimer, formatLocationName } from "@/lib/utils";
+import { formatLocationName } from "@/lib/utils";
 import Image from "next/image";
 
 function TokenPageContent() {
@@ -22,8 +22,6 @@ function TokenPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
 
-  // Get time disclaimer for current location
-  const timeDisclaimer = getTimeDisclaimer(location);
 
   useEffect(() => {
     const fetchGame = async () => {
@@ -87,15 +85,7 @@ function TokenPageContent() {
           <ArrowLeft className="w-4 h-4 mr-1" /> Home
         </Link>
         
-        {/* Time Disclaimer Alert */}
-        {timeDisclaimer.show && (
-          <Alert className="mb-4 border-orange-500 bg-orange-950/20 text-orange-200">
-            <Clock className="h-4 w-4" />
-            <AlertDescription className="text-sm font-medium">
-              {timeDisclaimer.message}
-            </AlertDescription>
-          </Alert>
-        )}
+       
         
         <Card className="bg-black border-2 border-gold-400 rounded-2xl shadow-2xl p-8 text-center relative overflow-hidden" style={{ boxShadow: '0 0 32px 0 #FFD70033, 0 2px 8px #0008' }}>
           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 30%, #ffd70022 0%, transparent 70%)' }} />
@@ -103,30 +93,51 @@ function TokenPageContent() {
           <h1 className="text-3xl font-extrabold mb-2 text-gold-400 uppercase tracking-widest" style={{ fontFamily: 'serif, system-ui' }}>{displayName}</h1>
           {location && <div className="mb-4 text-gold-200 font-semibold text-xs tracking-wide uppercase">Location: {formatLocationName(location)}</div>}
           
-          {/* Additional time disclaimer inside card if applicable */}
-          {timeDisclaimer.show && (
-            <div className="mb-4 p-3 bg-orange-950/30 border border-orange-500/50 rounded-lg">
-              <p className="text-orange-200 text-xs font-medium flex items-center justify-center">
-                <Clock className="w-3 h-3 mr-1" />
-                {timeDisclaimer.message}
-              </p>
-            </div>
-          )}
           
           <div className="grid grid-cols-1 gap-3 mb-6">
             {game.tokenPackages.map((pkg, idx) => (
               <button
                 key={pkg.tokens}
                 onClick={() => setSelectedPackage(idx)}
-                className={`w-full py-2 rounded-full border-2 font-bold text-base transition-all duration-200 flex items-center justify-center gap-2
-                  ${selectedPackage === idx ? "bg-gold-400 text-black border-gold-400 scale-105 shadow-gold-400/40 shadow" : "bg-black text-gold-200 border-gold-700 hover:bg-gold-400 hover:text-black hover:border-gold-400"}`}
-                style={{ letterSpacing: 1 }}
+                className={`w-full py-2 rounded-full border-2 font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 group
+                  ${selectedPackage === idx 
+                    ? "bg-gold-400 text-black border-gold-400 scale-105 shadow-gold-400/40 shadow" 
+                    : "bg-black text-gold-200 border-gold-700 hover:bg-gold-400 hover:text-black hover:border-gold-400 hover:scale-105"
+                  }`}
+                style={{ letterSpacing: 1,
+                  transition: 'all 0.2s ease-in-out',
+                  transform: selectedPackage === idx ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: selectedPackage === idx ? '0 0 12px #FFD70066, 0 2px 8px #0008' : '0 0 12px #FFD70033, 0 2px 8px #0008',
+                  backgroundColor: selectedPackage === idx ? '#FFD700' : '#000',
+                  color: selectedPackage === idx ? '#000' : '#FFD700',
+                  borderColor: selectedPackage === idx ? '#FFD700' : '#FFD700',
+                  borderWidth: selectedPackage === idx ? '2px' : '2px',
+                 }}
               >
-                <span className="inline-block w-6 h-6 rounded-full bg-gold-400 text-black flex items-center justify-center font-extrabold mr-2" style={{ fontSize: '1rem' }}>●</span>
+                <span className={`inline-block w-6 h-6 rounded-full flex items-center justify-center font-extrabold mr-2 ${
+                  selectedPackage === idx 
+                    ? "bg-gold-400 text-black" 
+                    : "bg-gold-400 text-black group-hover:bg-black group-hover:text-gold-400"
+                }`} style={{ fontSize: '1rem',
+                  transition: 'all 0.2s ease-in-out',
+                  transform: selectedPackage === idx ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: selectedPackage === idx ? '0 0 12px #FFD70066, 0 2px 8px #0008' : '0 0 12px #FFD70033, 0 2px 8px #0008',
+                  backgroundColor: selectedPackage === idx ? '#FFD700' : '#000',
+                  color: selectedPackage === idx ? '#000' : '#FFD700',
+                  borderColor: selectedPackage === idx ? '#FFD700' : '#FFD700',
+                  borderWidth: selectedPackage === idx ? '2px' : '2px',
+                 }}>●</span>
                 {pkg.tokens} TOKENS <span className="mx-2">•</span> ${pkg.price}
               </button>
             ))}
           </div>
+           {/* Time Disclaimer Alert */}
+           <Alert className="mb-4 border-orange-500 bg-orange-950/20 text-orange-200">
+            <Clock className="h-4 w-4" />
+            <AlertDescription className="text-sm font-medium text-left">
+            Disclaimer: Tokens bought after closing will be added the next business day.
+            </AlertDescription>
+          </Alert>
           <Button
             className="w-full mt-2 bg-gold-400 text-black font-bold rounded-full py-2 px-6 text-base shadow-gold-400/40 shadow transition-all hover:bg-white hover:text-gold-400 disabled:opacity-60 disabled:cursor-not-allowed border-2 border-gold-400"
             style={{ letterSpacing: 1 }}

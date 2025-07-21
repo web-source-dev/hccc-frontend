@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -405,5 +405,9 @@ function LoadingCheckout() {
 }
 
 export default function CheckoutPage() {
-  return <CheckoutPageContent />;
+  return (
+    <Suspense fallback={<LoadingCheckout />}>
+      <CheckoutPageContent />
+    </Suspense>
+  );
 } 
