@@ -154,7 +154,7 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess, o
         throw new Error(confirmError.message || 'Payment confirmation failed');
       }
 
-      // If payment was successful and we have a payment intent
+      // Handle different payment intent statuses
       if (paymentIntent && paymentIntent.status === 'succeeded') {
         // Confirm payment on our backend
         const response = await confirmPayment({
@@ -169,8 +169,47 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess, o
       } else if (paymentIntent && paymentIntent.status === 'requires_action') {
         // Handle 3D Secure or other authentication
         setError('Payment requires additional authentication. Please complete the payment process.');
+      } else if (paymentIntent && paymentIntent.status === 'requires_payment_method') {
+        // Payment failed - get detailed error information
+        const response = await confirmPayment({
+          paymentIntentId: paymentIntent.id,
+        });
+
+        if (!response.success && response.data?.error) {
+          const error = response.data.error;
+          let errorMessage = error.message || 'Your card was declined.';
+          
+          // Provide more specific error messages based on error codes
+          if (error.decline_code === 'generic_decline') {
+            errorMessage = 'Your card was declined. Please try a different card or contact your bank.';
+          } else if (error.decline_code === 'insufficient_funds') {
+            errorMessage = 'Your card has insufficient funds. Please try a different card.';
+          } else if (error.decline_code === 'lost_card') {
+            errorMessage = 'This card has been reported lost. Please use a different card.';
+          } else if (error.decline_code === 'stolen_card') {
+            errorMessage = 'This card has been reported stolen. Please use a different card.';
+          } else if (error.decline_code === 'expired_card') {
+            errorMessage = 'This card has expired. Please use a different card.';
+          } else if (error.decline_code === 'incorrect_cvc') {
+            errorMessage = 'The CVC number is incorrect. Please check and try again.';
+          } else if (error.decline_code === 'processing_error') {
+            errorMessage = 'There was an error processing your card. Please try again.';
+          } else if (error.code === 'card_declined') {
+            errorMessage = 'Your card was declined. Please try a different card.';
+          } else if (error.code === 'expired_card') {
+            errorMessage = 'This card has expired. Please use a different card.';
+          } else if (error.code === 'incorrect_cvc') {
+            errorMessage = 'The CVC number is incorrect. Please check and try again.';
+          } else if (error.code === 'processing_error') {
+            errorMessage = 'There was an error processing your card. Please try again.';
+          }
+          
+          throw new Error(errorMessage);
+        } else {
+          throw new Error('Payment failed. Please try again with a different payment method.');
+        }
       } else {
-        throw new Error('Payment was not completed successfully');
+        throw new Error('Payment was not completed successfully. Please try again.');
       }
     } catch (err) {
       setError((err as Error).message || 'Payment failed');

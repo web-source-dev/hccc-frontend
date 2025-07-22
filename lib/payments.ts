@@ -81,6 +81,12 @@ export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
   data: {
     payment: Payment;
     status: string;
+    error?: {
+      code: string;
+      message: string;
+      decline_code?: string;
+      type: string;
+    };
   };
 }> => {
   try {
@@ -94,6 +100,39 @@ export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
 
     if (!response.ok) {
       throw new Error(result.message || 'Failed to confirm payment');
+    }
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Check payment status
+export const checkPaymentStatus = async (data: ConfirmPaymentData): Promise<{
+  success: boolean;
+  data: {
+    payment: Payment;
+    status: string;
+    error?: {
+      code: string;
+      message: string;
+      decline_code?: string;
+      type: string;
+    };
+  };
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/payments/check-status`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to check payment status');
     }
 
     return result;
