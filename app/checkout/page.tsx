@@ -11,6 +11,7 @@ import { Loader2, ArrowLeft, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { getGame, type Game } from '@/lib/games';
 import { createPaymentIntent, confirmPayment, type Payment } from '@/lib/payments';
+import { isAuthenticated } from '@/lib/auth';
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -321,6 +322,28 @@ function CheckoutPageContent() {
 
   if (isLoading) {
     return <LoadingCheckout />;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Alert variant="destructive" className="mb-4">
+                <AlertDescription>Please Log In to Continue</AlertDescription>
+              </Alert>
+              <Link href="/login">
+                <Button>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Back to Login
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (error) {
