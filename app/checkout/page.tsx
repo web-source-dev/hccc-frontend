@@ -184,12 +184,6 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess, o
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
       <div className="space-y-4">
         <div className="bg-black p-1 rounded-lg">
           <h3 className="font-semibold text-lg mb-2">Order Summary</h3>
@@ -233,6 +227,13 @@ function CheckoutForm({ game, packageIndex, location, clientSecret, onSuccess, o
                   }
                 }}
               />
+              {error && (
+                <div className="mt-4">
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center p-8">
@@ -346,28 +347,6 @@ function CheckoutPageContent() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-              <Link href="/">
-                <Button>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Games
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (!game || !clientSecret) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -398,6 +377,9 @@ function CheckoutPageContent() {
           <CardHeader>
             <CardTitle>Complete Your Purchase</CardTitle>
           </CardHeader>
+          <div className="mb-2 text-sm text-yellow-400 font-semibold text-center">
+            {error && <Alert variant="destructive">{error}</Alert>}
+          </div>
           <CardContent className="px-2 py-2 md:px-4 md:py-4">
             <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
               <CheckoutForm
