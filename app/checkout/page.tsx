@@ -393,7 +393,7 @@ function CheckoutPageContent() {
           <CardContent className="p-6">
             <div className="text-center">
               <Alert variant="destructive">
-                <AlertDescription>Invalid checkout session</AlertDescription>
+                <AlertDescription> Something went wrong. Please try again later.</AlertDescription>
               </Alert>
             </div>
           </CardContent>
