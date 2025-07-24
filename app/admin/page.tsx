@@ -34,6 +34,102 @@ import { getAllUsers, getUserStats, getAdminUserTokenBalances, adjustUserTokenBa
 import { getAllPayments, getPaymentStats, type Payment } from '@/lib/payments'
 import Image from "next/image"
 
+// Pagination Component
+const Pagination = ({ 
+  currentPage, 
+  totalPages, 
+  onPageChange, 
+  totalItems 
+}: { 
+  currentPage: number; 
+  totalPages: number; 
+  onPageChange: (page: number) => void; 
+  totalItems: number;
+}) => {
+  const pages = []
+  const maxVisiblePages = 5
+  
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
+  const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
+  
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1)
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pages.push(i)
+  }
+  
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-t border-gray-700">
+      <div className="text-sm text-gray-400">
+        Showing page {currentPage} of {totalPages} ({totalItems} total items)
+      </div>
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="bg-gray-700 border-gray-600 text-white"
+        >
+          Previous
+        </Button>
+        
+        {startPage > 1 && (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(1)}
+              className="bg-gray-700 border-gray-600 text-white"
+            >
+              1
+            </Button>
+            {startPage > 2 && <span className="text-gray-400">...</span>}
+          </>
+        )}
+        
+        {pages.map(page => (
+          <Button
+            key={page}
+            variant={page === currentPage ? "default" : "outline"}
+            size="sm"
+            onClick={() => onPageChange(page)}
+            className={page === currentPage ? "bg-blue-600" : "bg-gray-700 border-gray-600 text-white"}
+          >
+            {page}
+          </Button>
+        ))}
+        
+        {endPage < totalPages && (
+          <>
+            {endPage < totalPages - 1 && <span className="text-gray-400">...</span>}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(totalPages)}
+              className="bg-gray-700 border-gray-600 text-white"
+            >
+              {totalPages}
+            </Button>
+          </>
+        )}
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="bg-gray-700 border-gray-600 text-white"
+        >
+          Next
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 interface DashboardStats {
   totalGames: number;
   totalUsers: number;
@@ -79,6 +175,16 @@ interface TokenFilters {
   sortOrder: 'asc' | 'desc';
 }
 
+interface PaymentFilters {
+  search: string;
+  status: string;
+  game: string;
+  location: string;
+  tokens: string;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+}
+
 export default function AdminPage() {
   const [games, setGames] = useState<Game[]>([])
   const [users, setUsers] = useState<User[]>([])
@@ -110,9 +216,30 @@ export default function AdminPage() {
     sortBy: 'user',
     sortOrder: 'asc'
   })
+  const [paymentFilters, setPaymentFilters] = useState<PaymentFilters>({
+    search: '',
+    status: 'all',
+    game: 'all',
+    location: 'all',
+    tokens: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc'
+  })
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [pendingTokenChanges, setPendingTokenChanges] = useState<{ [key: string]: number }>({})
   const [authError, setAuthError] = useState<string | null>(null)
+  
+  // Pagination state
+  const [gamesPagination, setGamesPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const [usersPagination, setUsersPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const [paymentsPagination, setPaymentsPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const [tokenBalancesPagination, setTokenBalancesPagination] = useState({ page: 1, limit: 20, total: 0 })
+  
+  // Individual loading states
+  const [gamesLoading, setGamesLoading] = useState(false)
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [paymentsLoading, setPaymentsLoading] = useState(false)
+  
   const router = useRouter()
 
   // Check authentication status
@@ -142,26 +269,24 @@ export default function AdminPage() {
       try {
         console.log('Starting to fetch admin dashboard data...');
         
-        // Fetch games
-        console.log('Fetching games...');
-        const gamesRes = await getGames({ limit: 100 })
+        // Fetch initial data (first page only)
+        console.log('Fetching initial data...');
+        const gamesRes = await getGames({ limit: gamesPagination.limit, page: 1 })
+        const usersRes = await getAllUsers({ limit: usersPagination.limit, page: 1 })
+        const paymentsRes = await getAllPayments({ limit: paymentsPagination.limit, page: 1 })
+
         const gamesData = gamesRes.data.games
-        setGames(gamesData)
-        console.log('Games fetched:', gamesData.length);
-
-        // Fetch users
-        console.log('Fetching users...');
-        const usersRes = await getAllUsers({ limit: 100 })
         const usersData = usersRes.data.users
-        setUsers(usersData)
-        console.log('Users fetched:', usersData.length);
-
-        // Fetch payments
-        console.log('Fetching payments...');
-        const paymentsRes = await getAllPayments({ limit: 100 })
         const paymentsData = paymentsRes.data.payments
+
+        setGames(gamesData)
+        setUsers(usersData)
         setPayments(paymentsData)
-        console.log('Payments fetched:', paymentsData.length);
+        
+        // Update pagination totals
+        setGamesPagination(prev => ({ ...prev, total: gamesRes.data.pagination.total }))
+        setUsersPagination(prev => ({ ...prev, total: usersRes.data.pagination.total }))
+        setPaymentsPagination(prev => ({ ...prev, total: paymentsRes.data.pagination.total }))
 
         // Fetch statistics
         console.log('Fetching statistics...');
@@ -173,7 +298,7 @@ export default function AdminPage() {
         const featuredGames = gamesData.filter(game => game.featured).length
 
         const statsData = {
-          totalGames: gamesData.length,
+          totalGames: userStatsRes.data.totalUsers > 0 ? userStatsRes.data.totalUsers : gamesData.length,
           totalUsers: userStatsRes.data.totalUsers,
           totalRevenue: paymentStatsRes.data.totalRevenue,
           totalPayments: paymentStatsRes.data.totalPayments,
@@ -182,23 +307,6 @@ export default function AdminPage() {
         }
         
         setStats(statsData)
-        console.log('Stats calculated:', statsData);
-
-        // Fetch token balances for all users
-        console.log('Fetching token balances...');
-        const tokenBalancesData: { [userId: string]: TokenBalance[] } = {}
-        for (const user of usersData) {
-          try {
-            const balancesRes = await getAdminUserTokenBalances(user._id || user.id)
-            tokenBalancesData[user._id || user.id] = balancesRes.data.balances
-          } catch (error) {
-            console.error(`Failed to fetch token balances for user ${user._id}:`, error)
-            tokenBalancesData[user._id || user.id] = []
-          }
-        }
-        setUserTokenBalances(tokenBalancesData)
-        console.log('Token balances fetched for', Object.keys(tokenBalancesData).length, 'users');
-
         console.log('Admin dashboard data fetch completed successfully');
 
       } catch (e) {
@@ -209,7 +317,47 @@ export default function AdminPage() {
       }
     }
     fetchData()
-  }, [])
+  }, []) // Remove pagination dependencies
+
+  // Separate data fetching functions for each tab
+  const fetchGamesData = async (page: number) => {
+    setGamesLoading(true)
+    try {
+      const gamesRes = await getGames({ limit: gamesPagination.limit, page })
+      setGames(gamesRes.data.games)
+      setGamesPagination(prev => ({ ...prev, total: gamesRes.data.pagination.total }))
+    } catch (error) {
+      console.error('Failed to fetch games:', error)
+    } finally {
+      setGamesLoading(false)
+    }
+  }
+
+  const fetchUsersData = async (page: number) => {
+    setUsersLoading(true)
+    try {
+      const usersRes = await getAllUsers({ limit: usersPagination.limit, page })
+      setUsers(usersRes.data.users)
+      setUsersPagination(prev => ({ ...prev, total: usersRes.data.pagination.total }))
+    } catch (error) {
+      console.error('Failed to fetch users:', error)
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const fetchPaymentsData = async (page: number) => {
+    setPaymentsLoading(true)
+    try {
+      const paymentsRes = await getAllPayments({ limit: paymentsPagination.limit, page })
+      setPayments(paymentsRes.data.payments)
+      setPaymentsPagination(prev => ({ ...prev, total: paymentsRes.data.pagination.total }))
+    } catch (error) {
+      console.error('Failed to fetch payments:', error)
+    } finally {
+      setPaymentsLoading(false)
+    }
+  }
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this game?')) {
@@ -314,7 +462,7 @@ export default function AdminPage() {
       // Only send fields that are present and valid
       const data: Record<string, unknown> = {};
       if (updatedUser.firstname) data.firstname = updatedUser.firstname;
-    if (updatedUser.lastname) data.lastname = updatedUser.lastname;
+      if (updatedUser.lastname) data.lastname = updatedUser.lastname;
       if (updatedUser.email) data.email = updatedUser.email;
       if (updatedUser.role) data.role = updatedUser.role;
       if (typeof updatedUser.isActive === 'boolean') data.isActive = updatedUser.isActive;
@@ -322,14 +470,86 @@ export default function AdminPage() {
       const result = await updateUser(updatedUser._id || updatedUser.id, data);
 
       setUsers(users.map(user => 
-        user._id === updatedUser._id ? result.data.user : user
-      ));
-      setEditingUser(null);
-      alert('User updated successfully');
-    } catch (error: unknown) {
-      console.error('Failed to update user:', error);
-      alert('Failed to update user');
+        (user._id === updatedUser._id || user.id === updatedUser._id) ? result.data.user : user
+      ))
+      setEditingUser(null)
+      alert('User updated successfully')
+    } catch (error) {
+      console.error('Failed to update user:', error)
+      alert('Failed to update user')
     }
+  }
+
+  // Pagination handlers
+  const handleGamesPageChange = async (page: number) => {
+    setGamesPagination(prev => ({ ...prev, page }))
+    await fetchGamesData(page)
+  }
+
+  const handleUsersPageChange = async (page: number) => {
+    setUsersPagination(prev => ({ ...prev, page }))
+    await fetchUsersData(page)
+  }
+
+  const handlePaymentsPageChange = async (page: number) => {
+    setPaymentsPagination(prev => ({ ...prev, page }))
+    await fetchPaymentsData(page)
+  }
+
+  const handleTokenBalancesPageChange = (page: number) => {
+    setTokenBalancesPagination(prev => ({ ...prev, page }))
+  }
+
+  // Load token balances for specific users
+  const loadTokenBalances = async (userIds: string[]) => {
+    const tokenBalancesData: { [userId: string]: TokenBalance[] } = {}
+    for (const userId of userIds) {
+      try {
+        const balancesRes = await getAdminUserTokenBalances(userId)
+        tokenBalancesData[userId] = balancesRes.data.balances
+      } catch (error) {
+        console.error(`Failed to fetch token balances for user ${userId}:`, error)
+        tokenBalancesData[userId] = []
+      }
+    }
+    setUserTokenBalances(prev => ({ ...prev, ...tokenBalancesData }))
+  }
+
+  // Payment status color function
+  const getPaymentStatusColor = (status: string) => {
+    switch (status) {
+      case 'succeeded':
+        return 'bg-green-600 text-white'
+      case 'processing':
+        return 'bg-blue-600 text-white'
+      case 'pending':
+        return 'bg-yellow-600 text-white'
+      case 'failed':
+        return 'bg-red-400 text-white'
+      case 'canceled':
+        return 'bg-gray-400 text-white'
+      case 'expired':
+        return 'bg-orange-600 text-white'
+      case 'incomplete':
+        return 'bg-purple-600 text-white'
+      case 'refunded':
+        return 'bg-gray-600 text-white'
+      case 'blocked':
+        return 'bg-red-600 text-white'
+      default:
+        return 'bg-gray-600 text-white'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-white mt-4 text-lg">Loading admin dashboard...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -351,7 +571,7 @@ export default function AdminPage() {
               <TabsTrigger value="users" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
                 <Users className="w-4 h-4 mr-2" /> Users
               </TabsTrigger>
-              <TabsTrigger value="tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+              <TabsTrigger onClick={() => loadTokenBalances(users.map(u => u._id || u.id))} value="tokens" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
                 <Package className="w-4 h-4 mr-2" /> Tokens
               </TabsTrigger>
               <TabsTrigger value="payments" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
@@ -463,7 +683,7 @@ export default function AdminPage() {
                         </div>
                         <div className="text-right">
                           <p className="text-white font-medium">{formatCurrency(payment.amount)}</p>
-                          <Badge variant={payment.status === "succeeded" ? "default" : "secondary"}>
+                          <Badge className={getPaymentStatusColor(payment.status)}>
                             {payment.status}
                           </Badge>
                         </div>
@@ -498,7 +718,7 @@ export default function AdminPage() {
 
             <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-0">
-                {loading ? (
+                {gamesLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
                     <span className="ml-2 text-gray-300">Loading games...</span>
@@ -579,6 +799,12 @@ export default function AdminPage() {
                 )}
               </CardContent>
             </Card>
+            <Pagination 
+              currentPage={gamesPagination.page} 
+              totalPages={Math.ceil(gamesPagination.total / gamesPagination.limit)} 
+              onPageChange={handleGamesPageChange} 
+              totalItems={gamesPagination.total} 
+            />
           </TabsContent>
 
           {/* Users Tab */}
@@ -665,116 +891,129 @@ export default function AdminPage() {
 
             <Card className="bg-gray-800 border-gray-700">
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-gray-700">
-                      <TableHead className="text-gray-300">User</TableHead>
-                      <TableHead className="text-gray-300">Role</TableHead>
-                      <TableHead className="text-gray-300">Status</TableHead>
-                      <TableHead className="text-gray-300">Total Tokens</TableHead>
-                      <TableHead className="text-gray-300">Join Date</TableHead>
-                      <TableHead className="text-gray-300">Last Login</TableHead>
-                      <TableHead className="text-gray-300">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {users
-                      .filter(user => {
-                        const matchesSearch = !userFilters.search || 
-                                          user.firstname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
-                user.lastname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
-                user.email.toLowerCase().includes(userFilters.search.toLowerCase())
-                        const matchesRole = userFilters.role === 'all' || !userFilters.role || user.role === userFilters.role
-                        const matchesStatus = userFilters.status === 'all' || !userFilters.status || 
-                          (userFilters.status === 'active' && user.isActive !== false) ||
-                          (userFilters.status === 'inactive' && user.isActive === false)
-                        return matchesSearch && matchesRole && matchesStatus
-                      })
-                      .sort((a, b) => {
-                        const aValue = a[userFilters.sortBy as keyof User] || ''
-                        const bValue = b[userFilters.sortBy as keyof User] || ''
-                        const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-                        return userFilters.sortOrder === 'asc' ? comparison : -comparison
-                      })
-                      .map((user) => {
-                        const userBalances = userTokenBalances[user._id || user.id] || []
-                        const totalTokens = userBalances.reduce((sum, balance) => sum + balance.tokens, 0)
-                        
-                        return (
-                          <TableRow key={user._id || user.id} className="border-gray-700">
-                            <TableCell>
-                              <div>
-                                <p className="text-white font-medium">{user.firstname} {user.lastname}</p>
-                                <p className="text-gray-400 text-sm">{user.email}</p>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                                {user.role}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={user.isActive !== false ? "default" : "destructive"}>
-                                {user.isActive !== false ? "Active" : "Blocked"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-purple-400 font-bold">{totalTokens}</div>
-                              <div className="text-gray-400 text-xs">
-                                {userBalances.length} game{userBalances.length !== 1 ? 's' : ''}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-gray-300">{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="text-gray-300">
-                                {user.lastLogin ? formatDate(user.lastLogin) : 'Never'}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex space-x-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => handleEditUser(user)}
-                                  className="border-blue-600 text-blue-400 bg-transparent hover:bg-blue-600 hover:text-white"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => handleBlockUser(user._id || user.id)}
-                                  className={`border-orange-600 text-orange-400 bg-transparent hover:bg-orange-600 hover:text-white`}
-                                >
-                                  <Ban className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => setSelectedUser(user)}
-                                  className="border-gray-600 bg-transparent"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="destructive" 
-                                  onClick={() => handleDeleteUser(user._id || user.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                  </TableBody>
-                </Table>
+                {usersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    <span className="ml-2 text-gray-300">Loading users...</span>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-gray-700">
+                        <TableHead className="text-gray-300">User</TableHead>
+                        <TableHead className="text-gray-300">Role</TableHead>
+                        <TableHead className="text-gray-300">Status</TableHead>
+                        <TableHead className="text-gray-300">Total Tokens</TableHead>
+                        <TableHead className="text-gray-300">Join Date</TableHead>
+                        <TableHead className="text-gray-300">Last Login</TableHead>
+                        <TableHead className="text-gray-300">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users
+                        .filter(user => {
+                          const matchesSearch = !userFilters.search || 
+                                            user.firstname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
+                                    user.lastname.toLowerCase().includes(userFilters.search.toLowerCase()) ||
+                                    user.email.toLowerCase().includes(userFilters.search.toLowerCase())
+                          const matchesRole = userFilters.role === 'all' || !userFilters.role || user.role === userFilters.role
+                          const matchesStatus = userFilters.status === 'all' || !userFilters.status || 
+                            (userFilters.status === 'active' && user.isActive !== false) ||
+                            (userFilters.status === 'inactive' && user.isActive === false)
+                          return matchesSearch && matchesRole && matchesStatus
+                        })
+                        .sort((a, b) => {
+                          const aValue = a[userFilters.sortBy as keyof User] || ''
+                          const bValue = b[userFilters.sortBy as keyof User] || ''
+                          const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+                          return userFilters.sortOrder === 'asc' ? comparison : -comparison
+                        })
+                        .map((user) => {
+                          const userBalances = userTokenBalances[user._id || user.id] || []
+                          const totalTokens = userBalances.reduce((sum, balance) => sum + balance.tokens, 0)
+                          
+                          return (
+                            <TableRow key={user._id || user.id} className="border-gray-700">
+                              <TableCell>
+                                <div>
+                                  <p className="text-white font-medium">{user.firstname} {user.lastname}</p>
+                                  <p className="text-gray-400 text-sm">{user.email}</p>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={user.role === "admin" ? "default" : "secondary"}>
+                                  {user.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={user.isActive !== false ? "default" : "destructive"}>
+                                  {user.isActive !== false ? "Active" : "Blocked"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-purple-400 font-bold">{totalTokens}</div>
+                                <div className="text-gray-400 text-xs">
+                                  {userBalances.length} game{userBalances.length !== 1 ? 's' : ''}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-gray-300">{user.createdAt ? formatDate(user.createdAt) : 'N/A'}</div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="text-gray-300">
+                                  {user.lastLogin ? formatDate(user.lastLogin) : 'Never'}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex space-x-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => handleEditUser(user)}
+                                    className="border-blue-600 text-blue-400 bg-transparent hover:bg-blue-600 hover:text-white"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => handleBlockUser(user._id || user.id)}
+                                    className={`border-orange-600 text-orange-400 bg-transparent hover:bg-orange-600 hover:text-white`}
+                                  >
+                                    <Ban className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline" 
+                                    onClick={() => setSelectedUser(user)}
+                                    className="border-gray-600 bg-transparent"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="destructive" 
+                                    onClick={() => handleDeleteUser(user._id || user.id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
+            <Pagination 
+              currentPage={usersPagination.page} 
+              totalPages={Math.ceil(usersPagination.total / usersPagination.limit)} 
+              onPageChange={handleUsersPageChange} 
+              totalItems={usersPagination.total} 
+            />
           </TabsContent>
 
           {/* Payments Tab */}
@@ -783,58 +1022,245 @@ export default function AdminPage() {
               <h2 className="text-2xl font-bold">Payment Analytics</h2>
             </div>
 
+            {/* Payment Filters */}
             <Card className="bg-gray-800 border-gray-700">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-gray-700">
-                      <TableHead className="text-gray-300">Game</TableHead>
-                      <TableHead className="text-gray-300">User</TableHead>
-                      <TableHead className="text-gray-300">Amount</TableHead>
-                      <TableHead className="text-gray-300">Status</TableHead>
-                      <TableHead className="text-gray-300">Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((payment) => (
-                      <TableRow key={payment._id} className="border-gray-700">
-                        <TableCell>
-                          <div className="flex items-center space-x-3">
-                            <Image
-                              src={payment.game.image || "/placeholder.svg"}
-                              alt={payment.game.name}
-                              width={40}
-                              height={40}
-                              className="w-8 h-8 rounded object-cover"
-                            />
-                            <span className="text-white font-medium">{payment.game.name}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="text-white font-medium">{payment.metadata.userFirstname} {payment.metadata.userLastname}</p>
-                            <p className="text-gray-400 text-sm">{payment.metadata.userEmail}</p>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-green-400 font-medium">
-                            {formatCurrency(payment.amount)}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={payment.status === "succeeded" ? "default" : "secondary"}>
-                            {payment.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="text-gray-300">{formatDate(payment.createdAt)}</div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+              <CardHeader>
+                <CardTitle className="text-white">Filters</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                  <div>
+                    <Label className="text-gray-400">Search</Label>
+                    <Input
+                      placeholder="Search payments..."
+                      value={paymentFilters.search}
+                      onChange={(e) => setPaymentFilters(prev => ({ ...prev, search: e.target.value }))}
+                      className="bg-gray-700 border-gray-600 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Status</Label>
+                    <Select value={paymentFilters.status} onValueChange={(value) => setPaymentFilters(prev => ({ ...prev, status: value }))}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue placeholder="All status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All status</SelectItem>
+                        <SelectItem value="succeeded">Succeeded</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Game</Label>
+                    <Select value={paymentFilters.game} onValueChange={(value) => setPaymentFilters(prev => ({ ...prev, game: value }))}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue placeholder="All games" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All games</SelectItem>
+                        {games.map(game => (
+                          <SelectItem key={game._id} value={game._id}>{game.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Location</Label>
+                    <Select value={paymentFilters.location} onValueChange={(value) => setPaymentFilters(prev => ({ ...prev, location: value }))}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue placeholder="All locations" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All locations</SelectItem>
+                        <SelectItem value="Cedar Park">Cedar Park</SelectItem>
+                        <SelectItem value="Liberty Hill">Liberty Hill</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Tokens</Label>
+                    <Select value={paymentFilters.tokens} onValueChange={(value) => setPaymentFilters(prev => ({ ...prev, tokens: value }))}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue placeholder="All tokens" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All tokens</SelectItem>
+                        <SelectItem value="0-100">0-100</SelectItem>
+                        <SelectItem value="100-500">100-500</SelectItem>
+                        <SelectItem value="500-1000">500-1000</SelectItem>
+                        <SelectItem value="1000+">1000+</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Sort By</Label>
+                    <Select value={paymentFilters.sortBy} onValueChange={(value) => setPaymentFilters(prev => ({ ...prev, sortBy: value }))}>
+                      <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="createdAt">Date</SelectItem>
+                        <SelectItem value="amount">Amount</SelectItem>
+                        <SelectItem value="tokens">Tokens</SelectItem>
+                        <SelectItem value="game">Game</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="location">Location</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-gray-400">Order</Label>
+                    <Button
+                      variant="outline"
+                      onClick={() => setPaymentFilters(prev => ({ 
+                        ...prev, 
+                        sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
+                      }))}
+                      className="w-full bg-gray-700 border-gray-600 text-white"
+                    >
+                      {paymentFilters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-gray-800 border-gray-700">
+              <CardContent className="p-0">
+                {paymentsLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+                    <span className="ml-2 text-gray-300">Loading payments...</span>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-gray-700">
+                        <TableHead className="text-gray-300">Game</TableHead>
+                        <TableHead className="text-gray-300">User</TableHead>
+                        <TableHead className="text-gray-300">Location</TableHead>
+                        <TableHead className="text-gray-300">Tokens</TableHead>
+                        <TableHead className="text-gray-300">Amount</TableHead>
+                        <TableHead className="text-gray-300">Status</TableHead>
+                        <TableHead className="text-gray-300">Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments
+                        .filter(payment => {
+                          const matchesSearch = !paymentFilters.search || 
+                            payment.metadata.gameName.toLowerCase().includes(paymentFilters.search.toLowerCase()) ||
+                            `${payment.metadata.userFirstname} ${payment.metadata.userLastname}`.toLowerCase().includes(paymentFilters.search.toLowerCase()) ||
+                            payment.metadata.userEmail.toLowerCase().includes(paymentFilters.search.toLowerCase())
+                          const matchesStatus = paymentFilters.status === 'all' || !paymentFilters.status || payment.status === paymentFilters.status
+                          const matchesGame = paymentFilters.game === 'all' || !paymentFilters.game || payment.game._id === paymentFilters.game
+                          const matchesLocation = paymentFilters.location === 'all' || !paymentFilters.location || payment.location === paymentFilters.location
+                          const matchesTokens = paymentFilters.tokens === 'all' || !paymentFilters.tokens || 
+                            (paymentFilters.tokens === '0-100' && payment.tokenPackage.tokens <= 100) ||
+                            (paymentFilters.tokens === '100-500' && payment.tokenPackage.tokens > 100 && payment.tokenPackage.tokens <= 500) ||
+                            (paymentFilters.tokens === '500-1000' && payment.tokenPackage.tokens > 500 && payment.tokenPackage.tokens <= 1000) ||
+                            (paymentFilters.tokens === '1000+' && payment.tokenPackage.tokens > 1000)
+                          return matchesSearch && matchesStatus && matchesGame && matchesLocation && matchesTokens
+                        })
+                        .sort((a, b) => {
+                          let aValue: string | number | Date, bValue: string | number | Date
+                          
+                          switch (paymentFilters.sortBy) {
+                            case 'createdAt':
+                              aValue = new Date(a.createdAt)
+                              bValue = new Date(b.createdAt)
+                              break
+                            case 'amount':
+                              aValue = a.amount
+                              bValue = b.amount
+                              break
+                            case 'tokens':
+                              aValue = a.tokenPackage.tokens
+                              bValue = b.tokenPackage.tokens
+                              break
+                            case 'game':
+                              aValue = a.game.name
+                              bValue = b.game.name
+                              break
+                            case 'user':
+                              aValue = `${a.metadata.userFirstname} ${a.metadata.userLastname}`
+                              bValue = `${b.metadata.userFirstname} ${b.metadata.userLastname}`
+                              break
+                            case 'location':
+                              aValue = a.location
+                              bValue = b.location
+                              break
+                            case 'status':
+                              aValue = a.status
+                              bValue = b.status
+                              break
+                            default:
+                              aValue = ''
+                              bValue = ''
+                          }
+                          
+                          const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0
+                          return paymentFilters.sortOrder === 'asc' ? comparison : -comparison
+                        })
+                        .map((payment) => (
+                          <TableRow key={payment._id} className="border-gray-700">
+                            <TableCell>
+                              <div className="flex items-center space-x-3">
+                                <Image
+                                  src={payment.game.image || "/placeholder.svg"}
+                                  alt={payment.game.name}
+                                  width={40}
+                                  height={40}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                                <span className="text-white font-medium">{payment.game.name}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="text-white font-medium">{payment.metadata.userFirstname} {payment.metadata.userLastname}</p>
+                                <p className="text-gray-400 text-sm">{payment.metadata.userEmail}</p>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className="border-blue-600 text-blue-400">
+                                {payment.location}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-purple-400 font-bold text-lg">
+                                {payment.tokenPackage.tokens}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-green-400 font-medium">
+                                {formatCurrency(payment.amount)}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={getPaymentStatusColor(payment.status)}>
+                                {payment.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-gray-300">{formatDate(payment.createdAt)}</div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+            <Pagination 
+              currentPage={paymentsPagination.page} 
+              totalPages={Math.ceil(paymentsPagination.total / paymentsPagination.limit)} 
+              onPageChange={handlePaymentsPageChange} 
+              totalItems={paymentsPagination.total} 
+            />
           </TabsContent>
 
           {/* Tokens Tab */}
@@ -849,7 +1275,7 @@ export default function AdminPage() {
                 <CardTitle className="text-white">Filters</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
                   <div>
                     <Label className="text-gray-400">Search User</Label>
                     <Input
@@ -1069,6 +1495,12 @@ export default function AdminPage() {
                 </Table>
               </CardContent>
             </Card>
+            <Pagination 
+              currentPage={tokenBalancesPagination.page} 
+              totalPages={Math.ceil(tokenBalancesPagination.total / tokenBalancesPagination.limit)} 
+              onPageChange={handleTokenBalancesPageChange} 
+              totalItems={tokenBalancesPagination.total} 
+            />
           </TabsContent>
         </Tabs>
 
