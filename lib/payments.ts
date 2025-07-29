@@ -14,11 +14,11 @@ export interface Payment {
     name?: string;
   };
   location: string;
-  stripePaymentIntentId: string;
-  stripeClientSecret: string;
+  paypalOrderId: string;
+  paypalPaymentId?: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled' | 'expired';
+  status: 'CREATED' | 'SAVED' | 'APPROVED' | 'VOIDED' | 'COMPLETED' | 'PAYER_ACTION_REQUIRED';
   paymentMethod?: string;
   receiptUrl?: string;
   // Token addition tracking
@@ -36,28 +36,28 @@ export interface Payment {
   updatedAt: string;
 }
 
-export interface CreatePaymentIntentData {
+export interface CreateOrderData {
   gameId: string;
   packageIndex: number;
   location: string;
 }
 
-export interface ConfirmPaymentData {
-  paymentIntentId: string;
+export interface CaptureOrderData {
+  orderId: string;
 }
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-// Create payment intent
-export const createPaymentIntent = async (data: CreatePaymentIntentData): Promise<{
+// Create PayPal order
+export const createPayPalOrder = async (data: CreateOrderData): Promise<{
   success: boolean;
   data: {
-    clientSecret: string;
+    orderId: string;
     paymentId: string;
   };
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/payments/create-payment-intent`, {
+    const response = await fetch(`${API_BASE_URL}/payments/create-order`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -66,7 +66,7 @@ export const createPaymentIntent = async (data: CreatePaymentIntentData): Promis
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to create payment intent');
+      throw new Error(result.message || 'Failed to create PayPal order');
     }
 
     return result;
@@ -75,8 +75,8 @@ export const createPaymentIntent = async (data: CreatePaymentIntentData): Promis
   }
 };
 
-// Confirm payment
-export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
+// Capture PayPal order
+export const capturePayPalOrder = async (data: CaptureOrderData): Promise<{
   success: boolean;
   data: {
     payment: Payment;
@@ -84,13 +84,12 @@ export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
     error?: {
       code: string;
       message: string;
-      decline_code?: string;
       type: string;
     };
   };
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/payments/confirm-payment`, {
+    const response = await fetch(`${API_BASE_URL}/payments/capture-order`, {
       method: 'POST',
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
@@ -99,7 +98,7 @@ export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to confirm payment');
+      throw new Error(result.message || 'Failed to capture PayPal order');
     }
 
     return result;
@@ -108,8 +107,8 @@ export const confirmPayment = async (data: ConfirmPaymentData): Promise<{
   }
 };
 
-// Check payment status
-export const checkPaymentStatus = async (data: ConfirmPaymentData): Promise<{
+// Check PayPal order status
+export const checkPayPalOrderStatus = async (data: CaptureOrderData): Promise<{
   success: boolean;
   data: {
     payment: Payment;
@@ -117,7 +116,6 @@ export const checkPaymentStatus = async (data: ConfirmPaymentData): Promise<{
     error?: {
       code: string;
       message: string;
-      decline_code?: string;
       type: string;
     };
   };
@@ -132,7 +130,7 @@ export const checkPaymentStatus = async (data: ConfirmPaymentData): Promise<{
     const result = await response.json();
 
     if (!response.ok) {
-      throw new Error(result.message || 'Failed to check payment status');
+      throw new Error(result.message || 'Failed to check PayPal order status');
     }
 
     return result;
@@ -189,15 +187,15 @@ export const getPaymentDetails = async (paymentId: string): Promise<{
   }
 };
 
-// Get payment details by Stripe payment intent ID
-export const getPaymentByIntent = async (paymentIntentId: string): Promise<{
+// Get payment details by PayPal order ID
+export const getPaymentByOrder = async (orderId: string): Promise<{
   success: boolean;
   data: {
     payment: Payment;
   };
 }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/payments/by-intent/${paymentIntentId}`, {
+    const response = await fetch(`${API_BASE_URL}/payments/by-order/${orderId}`, {
       headers: getAuthHeaders(),
     });
 

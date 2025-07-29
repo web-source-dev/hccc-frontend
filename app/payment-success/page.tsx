@@ -1,257 +1,257 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CheckCircle, XCircle, Loader2, ArrowLeft, Package, MapPin, DollarSign } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
-import { getPaymentDetails, getPaymentByIntent, confirmPayment, type Payment } from '@/lib/payments';
+import { getPaymentByOrder, type Payment } from '@/lib/payments';
+import { isAuthenticated } from '@/lib/auth';
 
 function PaymentSuccessContent() {
-  const [payment, setPayment] = useState<Payment | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [retrying, setRetrying] = useState(false);
   const searchParams = useSearchParams();
-
-  const fetchPayment = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      const paymentId = searchParams.get('paymentId');
-      if (!paymentId) {
-        const paymentIntent = searchParams.get('payment_intent');
-        if (paymentIntent) {
-          const response = await getPaymentByIntent(paymentIntent);
-          if (response.success) {
-            setPayment(response.data.payment);
-            setLoading(false);
-            return;
-          } else {
-            setError('Payment not found');
-            setLoading(false);
-            return;
-          }
-        }
-        setError('Payment ID is required');
-        setLoading(false);
-        return;
-      }
-      const response = await getPaymentDetails(paymentId);
-      if (response.success) {
-        setPayment(response.data.payment);
-      } else {
-        setError('Failed to load payment details');
-      }
-    } catch (err) {
-      console.log(err);
-      setError('Failed to load payment details');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const router = useRouter();
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
+    const fetchPayment = async () => {
+      try {
+        // Check authentication
+        if (!isAuthenticated()) {
+          router.push('/login');
+          return;
+        }
+
+        const orderId = searchParams.get('orderId');
+        if (!orderId) {
+          setError('No order ID provided');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await getPaymentByOrder(orderId);
+        if (response.success) {
+          setPayment(response.data.payment);
+        } else {
+          setError('Failed to fetch payment details');
+        }
+      } catch (error) {
+        console.error('Error fetching payment:', error);
+        setError('Failed to load payment information');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchPayment();
-    // eslint-disable-next-line
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   const handleRetry = async () => {
-    if (!payment) return;
-    setRetrying(true);
-    setError('');
+    setIsRetrying(true);
     try {
-      // Try to confirm payment status with backend
-      const response = await confirmPayment({ paymentIntentId: payment.stripePaymentIntentId });
-      if (response.success) {
-        setPayment(response.data.payment);
-      } else {
-        setError('Could not update payment status. Please try again later.');
+      const orderId = searchParams.get('orderId');
+      if (orderId) {
+        const response = await getPaymentByOrder(orderId);
+        if (response.success) {
+          setPayment(response.data.payment);
+          setError('');
+        } else {
+          setError('Failed to fetch payment details');
+        }
       }
-    } catch (err) {
-      console.log(err);
-      setError('Could not update payment status. Please try again later.');
+    } catch (error) {
+      console.error('Error refreshing payment:', error);
+      setError('Failed to refresh payment information');
     } finally {
-      setRetrying(false);
+      setIsRetrying(false);
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingPayment />;
   }
 
-  if (error) {
+  if (error && !payment) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <Alert variant="destructive" className="mb-4">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-              <div className="space-y-2">
-                <Link href="/">
-                  <Button className="w-full">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Games
-                  </Button>
-                </Link>
-                <Link href="/profile?tab=history">
-                  <Button variant="outline" className="w-full">
-                    View Payment History
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+        <div className="mt-4 flex gap-2">
+          <Button onClick={handleRetry} disabled={isRetrying}>
+            {isRetrying ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Retrying...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </>
+            )}
+          </Button>
+          <Link href="/">
+            <Button variant="outline">Go Home</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!payment) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-              <Alert variant="destructive">
-                <AlertDescription>Payment not found</AlertDescription>
-              </Alert>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>Payment not found</AlertDescription>
+        </Alert>
+        <div className="mt-4">
+          <Link href="/">
+            <Button>Go Home</Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
-  const isSuccess = payment.status === 'succeeded';
-  const isPending = payment.status === 'pending' || payment.status === 'processing';
-  const isFailed = payment.status === 'failed' || payment.status === 'canceled' || payment.status === 'expired';
-  const tokensAdded = payment.tokensAdded;
-  const tokensScheduled = payment.tokensScheduledFor && !payment.tokensAdded;
+  const isSuccess = payment.status === 'COMPLETED';
+  const isPending = ['CREATED', 'SAVED', 'APPROVED', 'PAYER_ACTION_REQUIRED'].includes(payment.status);
 
   return (
-    <div className="min-h-screen bg-black py-8">
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="mb-6">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Games
-          </Link>
-        </div>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="text-center mb-8">
+        {isSuccess ? (
+          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+        ) : isPending ? (
+          <Loader2 className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
+        ) : (
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+        )}
+        
+        <h1 className="text-3xl font-bold mb-2">
+          {isSuccess ? 'Payment Successful!' : isPending ? 'Payment Processing' : 'Payment Failed'}
+        </h1>
+        
+        <p className="text-muted-foreground">
+          {isSuccess 
+            ? 'Your tokens have been added to your account.'
+            : isPending 
+            ? 'Your payment is being processed. Please wait...'
+            : 'Your payment was not completed successfully.'
+          }
+        </p>
+      </div>
 
-        <Card>
-          <CardHeader className="text-center">
-            {isSuccess ? (
-              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            ) : isPending ? (
-              <Loader2 className="h-16 w-16 text-blue-500 mx-auto mb-4 animate-spin" />
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between items-center">
+            <span>Order ID:</span>
+            <span className="font-mono text-sm">{payment.paypalOrderId}</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Game:</span>
+            <span className="font-medium">{payment.game.name}</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Location:</span>
+            <span className="font-medium">{payment.location}</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Tokens:</span>
+            <span className="font-medium">{payment.tokenPackage.tokens} tokens</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Amount:</span>
+            <span className="font-medium">${payment.amount.toFixed(2)}</span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Status:</span>
+            <span className={`font-medium ${
+              isSuccess ? 'text-green-600' : 
+              isPending ? 'text-blue-600' : 
+              'text-red-600'
+            }`}>
+              {payment.status}
+            </span>
+          </div>
+          
+          <div className="flex justify-between items-center">
+            <span>Date:</span>
+            <span className="font-medium">
+              {new Date(payment.createdAt).toLocaleDateString()} {new Date(payment.createdAt).toLocaleTimeString()}
+            </span>
+          </div>
+
+          {payment.tokensScheduledFor && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="font-semibold text-yellow-800 mb-2">Token Schedule Notice</h3>
+              <p className="text-sm text-yellow-700">
+                Your tokens will be added to your account on{' '}
+                {new Date(payment.tokensScheduledFor).toLocaleDateString()} at{' '}
+                {new Date(payment.tokensScheduledFor).toLocaleTimeString()}.
+              </p>
+            </div>
+          )}
+
+          {payment.receiptUrl && (
+            <div className="pt-4">
+              <a 
+                href={payment.receiptUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View Receipt
+              </a>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="mt-8 flex gap-4 justify-center">
+        {isPending && (
+          <Button onClick={handleRetry} disabled={isRetrying}>
+            {isRetrying ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Checking Status...
+              </>
             ) : (
-              <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Check Status
+              </>
             )}
-            <CardTitle className="text-2xl font-bold">
-              {isSuccess ? 'Payment Successful!' : isPending ? 'Payment Processing' : 'Payment Failed'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {isSuccess && tokensAdded && (
-              <Alert className="bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertDescription className="text-green-800">
-                  Your payment was processed successfully. Your tokens are now available at the selected location. Thank you for your purchase!
-                </AlertDescription>
-              </Alert>
-            )}
-            {isSuccess && tokensScheduled && (
-              <Alert className="bg-yellow-50 border-yellow-200">
-                <Loader2 className="h-4 w-4 text-yellow-600 animate-spin" />
-                <AlertDescription className="text-yellow-800">
-                  Your payment was successful, but tokens will be added to your account on <b>{new Date(payment.tokensScheduledFor || '').toLocaleString()}</b> due to location closing hours. You will receive an email when tokens are credited. Thank you for your patience!
-                </AlertDescription>
-              </Alert>
-            )}
-            {isPending && (
-              <Alert className="bg-blue-50 border-blue-200">
-                <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />
-                <AlertDescription className="text-blue-800">
-                  Your payment is being processed. This may take a few moments. If tokens are not credited within 5 minutes, please click the button below to retry. If the issue persists, contact support with your payment details.
-                </AlertDescription>
-                <div className="mt-4 flex flex-col items-center gap-2">
-                  <Button onClick={handleRetry} disabled={retrying} className="w-full max-w-xs">
-                    {retrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    {retrying ? 'Checking Status...' : 'Retry Status'}
-                  </Button>
-                </div>
-              </Alert>
-            )}
-            {isFailed && (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  Payment failed or was cancelled. Please try again or contact support if you were charged but did not receive tokens.
-                </AlertDescription>
-              </Alert>
-            )}
-            <div className="bg-black p-6 rounded-lg space-y-4">
-              <h3 className="font-semibold text-lg">Payment Details</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center space-x-3">
-                  <Package className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm text-gray-600">Game</p>
-                    <p className="font-medium">{payment.game.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Package className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm text-gray-600">Tokens</p>
-                    <p className="font-medium">{payment.tokenPackage.tokens} tokens</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MapPin className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm text-gray-600">Location</p>
-                    <p className="font-medium">{payment.location}</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <DollarSign className="h-5 w-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm text-gray-600">Amount</p>
-                    <p className="font-medium">${payment.amount.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">
-                  <strong>Status:</strong> {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <strong>Date:</strong> {new Date(payment.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              <Link href="/" className="flex-1">
-                <Button className="w-full">
-                  Back to Games
-                </Button>
-              </Link>
-              <Link href="/profile?tab=history" className="flex-1">
-                <Button variant="outline" className="w-full">
-                  View Payment History
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+          </Button>
+        )}
+        
+        <Link href={`/tokens/${payment.game._id}`}>
+          <Button variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Game
+          </Button>
+        </Link>
+        
+        <Link href="/">
+          <Button variant="outline">
+            Go Home
+          </Button>
+        </Link>
       </div>
     </div>
   );
@@ -259,10 +259,10 @@ function PaymentSuccessContent() {
 
 function LoadingPayment() {
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-        <p>Loading payment details...</p>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading payment details...</span>
       </div>
     </div>
   );
