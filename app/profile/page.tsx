@@ -814,7 +814,7 @@ function ProfileContent() {
                               {new Date(payment.createdAt).toLocaleDateString()}
                             </div>
                             <div className="text-gray-500 text-xs">
-                              {payment.stripePaymentIntentId.slice(-8)}
+                              {payment.paypalOrderId ? payment.paypalOrderId.slice(-8) : 'N/A'}
                             </div>
                           </div>
                         </div>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Loader2, ArrowLeft, Package, MapPin, DollarSign } from 'lucide-react';
 import Link from 'next/link';
-import { getPaymentDetails, getPaymentByIntent, confirmPayment, type Payment } from '@/lib/payments';
+import { getPaymentDetails, getPaymentByOrder, captureOrder, type Payment } from '@/lib/payments';
 
 function PaymentSuccessContent() {
   const [payment, setPayment] = useState<Payment | null>(null);
@@ -22,9 +22,9 @@ function PaymentSuccessContent() {
       setError('');
       const paymentId = searchParams.get('paymentId');
       if (!paymentId) {
-        const paymentIntent = searchParams.get('payment_intent');
-        if (paymentIntent) {
-          const response = await getPaymentByIntent(paymentIntent);
+        const orderId = searchParams.get('orderId');
+        if (orderId) {
+          const response = await getPaymentByOrder(orderId);
           if (response.success) {
             setPayment(response.data.payment);
             setLoading(false);
@@ -63,8 +63,8 @@ function PaymentSuccessContent() {
     setRetrying(true);
     setError('');
     try {
-      // Try to confirm payment status with backend
-      const response = await confirmPayment({ paymentIntentId: payment.stripePaymentIntentId });
+      // Try to capture payment status with backend
+      const response = await captureOrder({ orderId: payment.paypalOrderId });
       if (response.success) {
         setPayment(response.data.payment);
       } else {
