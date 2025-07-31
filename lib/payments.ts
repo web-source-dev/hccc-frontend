@@ -55,6 +55,7 @@ export const createOrder = async (data: CreateOrderData): Promise<{
     orderId: string;
     paymentId: string;
   };
+  message?: string;
 }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/payments/create-order`, {
@@ -82,6 +83,7 @@ export const captureOrder = async (data: CaptureOrderData): Promise<{
     payment: Payment;
     status: string;
   };
+  message?: string;
 }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/payments/capture-order`, {
