@@ -552,6 +552,62 @@ export const blockUser = async (
   }
 };
 
+// Forgot password
+export const forgotPassword = async (email: string): Promise<{
+  success: boolean;
+  message: string;
+}> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to send reset email');
+    }
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Reset password
+export const resetPassword = async (token: string, password: string): Promise<AuthResponse> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, password }),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to reset password');
+    }
+
+    if (result.success && result.data.token) {
+      setToken(result.data.token);
+      dispatchAuthChange(); // Dispatch auth change event
+    }
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Custom hook for real-time authentication state
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);

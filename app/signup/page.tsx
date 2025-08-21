@@ -234,7 +234,7 @@ function SignupForm() {
           Already have an account?{' '}
           <Link
             href={createLoginUrl(getRedirectUrl() || window.location.href)}
-            className="font-medium text-green-600 hover:text-green-500 transition-colors"
+            className="font-medium text-blue-600 hover:text-blue-500 transition-colors"
           >
             Sign in
           </Link>

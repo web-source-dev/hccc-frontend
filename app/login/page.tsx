@@ -129,6 +129,14 @@ function LoginForm() {
         {errors.password && (
           <p className="text-sm text-red-500">{errors.password.message}</p>
         )}
+        <div className="text-right">
+          <Link
+            href="/forgot-password"
+            className="text-sm text-blue-600 hover:text-blue-500 transition-colors"
+          >
+            Forgot Password?
+          </Link>
+        </div>
       </div>
 
       <Button
