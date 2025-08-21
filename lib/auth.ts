@@ -571,7 +571,7 @@ export const forgotPassword = async (email: string): Promise<{
 
     if (!response.ok) {
       throw new Error(result.message || 'Failed to send reset email');
-    }
+    } 
 
     return result;
   } catch (error) {
