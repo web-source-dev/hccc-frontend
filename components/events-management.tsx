@@ -16,7 +16,6 @@ import {
   Trash2, 
   Eye, 
   EyeOff,
-  Upload,
   X
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -227,7 +226,15 @@ export default function EventsManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {events.map((event) => (
+                {events.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                      No events found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                <>
+                  {events.map((event) => (
                   <TableRow key={event._id} className="border-gray-700">
                     <TableCell>
                       {event.image && (
@@ -278,6 +285,8 @@ export default function EventsManagement() {
                     </TableCell>
                   </TableRow>
                 ))}
+                </>
+                )}
               </TableBody>
             </Table>
           </div>

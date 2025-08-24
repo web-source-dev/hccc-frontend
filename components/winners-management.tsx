@@ -211,6 +211,14 @@ export default function WinnersManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {winners.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-400">
+                      No winners found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                <>
                 {winners.map((winner) => (
                   <TableRow key={winner._id} className="border-gray-700">
                     <TableCell className="text-white">{winner.name}</TableCell>
@@ -260,8 +268,10 @@ export default function WinnersManagement() {
                         </Button>
                       </div>
                     </TableCell>
-                  </TableRow>
-                ))}
+                    </TableRow>
+                  ))}
+                </>
+                )}
               </TableBody>
             </Table>
           </div>
