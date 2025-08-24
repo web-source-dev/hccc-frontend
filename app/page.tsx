@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { getGames, type Game } from "@/lib/games"
+import { getPublicWinners, type Winner } from "@/lib/winners"
 import Image from "next/image"
 
 // Animated GameCard component
@@ -67,7 +68,20 @@ function GameCard({ game, location }: { game: Game; location: string }) {
 }
 
 // Recent Winner Card component
-function WinnerCard({ winner }: { winner: { name: string; game: string; location: string; amount: string; date: string } }) {
+function WinnerCard({ winner }: { winner: Winner }) {
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: '2-digit', 
+      day: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatAmount = (amount: number) => {
+    return `$${amount.toLocaleString()}`;
+  };
+
   return (
     <div className="bg-[#222] rounded-xl p-6 border border-yellow-400/20 hover:border-yellow-400/40 transition-all duration-300">
       <div className="flex items-center justify-between mb-4">
@@ -80,10 +94,10 @@ function WinnerCard({ winner }: { winner: { name: string; game: string; location
         </span>
       </div>
       <div className="space-y-2 text-sm">
-        <p><span className="text-gray-400">Game:</span> <span className="font-semibold">{winner.game}</span></p>
+        <p><span className="text-gray-400">Game:</span> <span className="font-semibold">{winner.game.name}</span></p>
         <p><span className="text-gray-400">Location:</span> <span className="font-semibold">{winner.location}</span></p>
-        <p><span className="text-gray-400">Amount:</span> <span className="font-semibold text-green-400">{winner.amount}</span></p>
-        <p><span className="text-gray-400">Date:</span> <span className="font-semibold">{winner.date}</span></p>
+        <p><span className="text-gray-400">Amount:</span> <span className="font-semibold text-green-400">{formatAmount(winner.amount)}</span></p>
+        <p><span className="text-gray-400">Date:</span> <span className="font-semibold">{formatDate(winner.date)}</span></p>
       </div>
     </div>
   );
@@ -91,8 +105,11 @@ function WinnerCard({ winner }: { winner: { name: string; game: string; location
 
 export default function LandingPage() {
   const [games, setGames] = useState<Game[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [winners, setWinners] = useState<Winner[]>([]);
+  const [gamesLoading, setGamesLoading] = useState(true);
+  const [winnersLoading, setWinnersLoading] = useState(true);
+  const [gamesError, setGamesError] = useState<string | null>(null);
+  const [winnersError, setWinnersError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchGames = async () => {
@@ -100,13 +117,25 @@ export default function LandingPage() {
         const response = await getGames({ status: 'active', limit: 50 });
         setGames(response.data.games);
       } catch (err: unknown) {
-        setError((err as Error).message || 'Failed to load games');
+        setGamesError((err as Error).message || 'Failed to load games');
       } finally {
-        setLoading(false);
+        setGamesLoading(false);
+      }
+    };
+
+    const fetchWinners = async () => {
+      try {
+        const response = await getPublicWinners();
+        setWinners(response);
+      } catch (err: unknown) {
+        setWinnersError((err as Error).message || 'Failed to load winners');
+      } finally {
+        setWinnersLoading(false);
       }
     };
 
     fetchGames();
+    fetchWinners();
   }, []);
 
   // Create game-location combinations
@@ -128,42 +157,8 @@ export default function LandingPage() {
     return acc;
   }, {} as Record<string, Array<{ game: Game; location: string; available: boolean }>>);
 
-  // Sample recent winners data
-  const recentWinners = [
-    { name: "Sarah M.", game: "Golden Dragon", location: "Cedar Park", amount: "$1,250", date: "12/15/2024" },
-    { name: "Mike R.", game: "River Tower", location: "Liberty Hill", amount: "$850", date: "12/14/2024" },
-    { name: "Jennifer L.", game: "Ultra Panda", location: "Cedar Park", amount: "$2,100", date: "12/13/2024" },
-    { name: "David K.", game: "Fortune 2 Go", location: "Liberty Hill", amount: "$675", date: "12/12/2024" },
-    { name: "Amanda P.", game: "Magic City", location: "Cedar Park", amount: "$1,800", date: "12/11/2024" },
-    { name: "Robert T.", game: "Orion Star", location: "Cedar Park", amount: "$950", date: "12/10/2024" }
-  ];
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
-          <p>Loading games...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">Error: {error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Get recent winners (limit to 6)
+  const recentWinners = winners.slice(0, 6);
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden">
@@ -204,34 +199,63 @@ export default function LandingPage() {
       </section>
 
       {/* Game Sections */}
-      {Object.entries(gamesByLocation).map(([location, locationGames]) => (
-        <section key={location} className="py-16 bg-black">
-          <h2 className="text-5xl font-extrabold text-center mb-10 tracking-tight text-white font-sans flex items-center justify-center gap-3" style={{ letterSpacing: 2 }}>
-            <MapPin className="w-8 h-8 text-yellow-400 inline-block" />
-            {location.toUpperCase()}
-          </h2>
-          <div className="max-w-6xl mx-auto bg-[#222] rounded-2xl p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {locationGames.map((combination) => (
-              <GameCard 
-                key={`${combination.game._id}-${combination.location}`} 
-                game={combination.game} 
-                location={combination.location} 
-              />
-            ))}
-          </div>
-        </section>
-      ))}
-      
-      {Object.keys(gamesByLocation).length === 0 && (
+      {gamesLoading ? (
         <section className="py-16 bg-black">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-5xl font-extrabold mb-10 tracking-tight text-white">GAMES</h2>
             <div className="bg-[#222] rounded-2xl p-8">
-            <p className="text-gray-400 mb-4">No games available at the moment.</p>
-            <p className="text-sm text-gray-500">Please check back later or contact an administrator.</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+              <p className="text-gray-400">Loading games...</p>
+            </div>
           </div>
-        </div>
         </section>
+      ) : gamesError ? (
+        <section className="py-16 bg-black">
+          <div className="max-w-4xl mx-auto text-center">
+            <h2 className="text-5xl font-extrabold mb-10 tracking-tight text-white">GAMES</h2>
+            <div className="bg-[#222] rounded-2xl p-8">
+              <p className="text-red-400 mb-4">Error loading games. Please try again later.</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300"
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <>
+          {Object.entries(gamesByLocation).map(([location, locationGames]) => (
+            <section key={location} className="py-16 bg-black">
+              <h2 className="text-5xl font-extrabold text-center mb-10 tracking-tight text-white font-sans flex items-center justify-center gap-3" style={{ letterSpacing: 2 }}>
+                <MapPin className="w-8 h-8 text-yellow-400 inline-block" />
+                {location.toUpperCase()}
+              </h2>
+              <div className="max-w-6xl mx-auto bg-[#222] rounded-2xl p-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                {locationGames.map((combination) => (
+                  <GameCard 
+                    key={`${combination.game._id}-${combination.location}`} 
+                    game={combination.game} 
+                    location={combination.location} 
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+          
+          {Object.keys(gamesByLocation).length === 0 && (
+            <section className="py-16 bg-black">
+              <div className="max-w-4xl mx-auto text-center">
+                <h2 className="text-5xl font-extrabold mb-10 tracking-tight text-white">GAMES</h2>
+                <div className="bg-[#222] rounded-2xl p-8">
+                <p className="text-gray-400 mb-4">No games available at the moment.</p>
+                <p className="text-sm text-gray-500">Please check back later or contact an administrator.</p>
+              </div>
+            </div>
+            </section>
+          )}
+        </>
       )}
 
       {/* Recent Winners Section */}
@@ -242,16 +266,34 @@ export default function LandingPage() {
             Congratulations to our latest winners! Join the excitement and see if you can be next.
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recentWinners.map((winner, index) => (
-              <WinnerCard key={index} winner={winner} />
-            ))}
-          </div>
+          {winnersLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+              <p className="text-gray-400">Loading winners...</p>
+            </div>
+          ) : winnersError ? (
+            <div className="text-center py-8">
+              <p className="text-red-400 mb-4">Error loading winners. Please try again later.</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : recentWinners.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {recentWinners.map((winner) => (
+                <WinnerCard key={winner._id} winner={winner} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-400">No recent winners</p>
+            </div>
+          )}
           
           <div className="text-center mt-12">
-            <p className="text-sm text-gray-400 mb-4">
-              &quot;To play, press and hold the enter key. To stop, release the enter key.&quot;
-            </p>
             <Link 
               href="/promotions" 
               className="inline-block bg-yellow-400 text-black px-8 py-3 rounded-lg font-semibold hover:bg-yellow-300 transition-colors"

@@ -23,6 +23,7 @@ import {
   type CreateGameData,
   type UpdateGameData 
 } from '@/lib/games';
+import { uploadImage } from '@/lib/upload';
 
 const gameSchema = z.object({
   name: z.string().min(2, 'Game name must be at least 2 characters').max(100, 'Game name cannot exceed 100 characters'),
@@ -136,15 +137,17 @@ export default function GameForm({ game, onSubmit, onCancel, loading = false }: 
     }
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
 
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setValue('image', reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const result = await uploadImage(file, 'hccc_games');
+        setValue('image', result.url);
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        setError('Failed to upload image');
+      }
     }
   };
 

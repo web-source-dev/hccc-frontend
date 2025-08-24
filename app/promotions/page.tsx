@@ -1,8 +1,41 @@
+"use client"
+
+import { useEffect, useState } from 'react';
 import { Calendar, MapPin, Gift, Star, Percent } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getPublicEvents, type Event } from '@/lib/events';
 
 export default function PromotionsPage() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        const response = await getPublicEvents();
+        setEvents(response);
+      } catch (err: unknown) {
+        setError((err as Error).message || 'Failed to load events');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEvents();
+  }, []);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
   return (
     <div className="bg-black text-white min-h-screen">
       {/* Hero Section */}
@@ -59,37 +92,55 @@ export default function PromotionsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold text-center mb-12 text-yellow-400">Upcoming Events</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="bg-[#222] rounded-2xl p-8">
-              <div className="flex items-center space-x-3 mb-4">
-                <Calendar className="w-6 h-6 text-yellow-400" />
-                <span className="text-yellow-400 font-semibold">December 15, 2024</span>
-              </div>
-              <h3 className="text-xl font-bold mb-3">Holiday Tournament</h3>
-              <p className="text-gray-300 mb-4">
-                Join us for our annual holiday gaming tournament with amazing prizes and festive fun!
-              </p>
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <MapPin className="w-4 h-4" />
-                <span>Both locations</span>
-              </div>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-400 mx-auto mb-4"></div>
+              <p className="text-gray-400">Loading events...</p>
             </div>
-
-            <div className="bg-[#222] rounded-2xl p-8">
-              <div className="flex items-center space-x-3 mb-4">
-                <Calendar className="w-6 h-6 text-yellow-400" />
-                <span className="text-yellow-400 font-semibold">Every Friday</span>
-              </div>
-              <h3 className="text-xl font-bold mb-3">Friday Night Frenzy</h3>
-              <p className="text-gray-300 mb-4">
-                Special Friday night events with bonus tokens, prizes, and live entertainment!
-              </p>
-              <div className="flex items-center space-x-2 text-sm text-gray-400">
-                <MapPin className="w-4 h-4" />
-                <span>Both locations</span>
-              </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <p className="text-red-400 mb-4">Error loading events. Please try again later.</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="bg-yellow-400 text-black px-4 py-2 rounded hover:bg-yellow-300"
+              >
+                Try Again
+              </button>
             </div>
-          </div>
+          ) : events.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {events.map((event) => (
+                <div key={event._id} className="bg-[#222] rounded-2xl p-8">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Calendar className="w-6 h-6 text-yellow-400" />
+                    <span className="text-yellow-400 font-semibold">{formatDate(event.date)}</span>
+                  </div>
+                  <h3 className="text-xl font-bold mb-3">{event.title}</h3>
+                  <p className="text-gray-300 mb-4">{event.description}</p>
+                  <div className="flex items-center space-x-2 text-sm text-gray-400">
+                    <MapPin className="w-4 h-4" />
+                    <span>{event.location}</span>
+                  </div>
+                  {event.image && (
+                    <div className="mt-4">
+                      <Image
+                        src={event.image}
+                        alt={event.title}
+                        width={400}
+                        height={200}
+                        className="w-full h-48 object-contain rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-400">No upcoming events at the moment.</p>
+              <p className="text-sm text-gray-500 mt-2">Check back soon for new events and promotions!</p>
+            </div>
+          )}
         </div>
       </div>
 

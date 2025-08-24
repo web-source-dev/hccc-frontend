@@ -27,12 +27,16 @@ import {
   Ban,
   SortAsc,
   SortDesc,
+  Calendar,
+  Trophy,
 } from "lucide-react"
 import { useRouter } from 'next/navigation'
 import { getGames, deleteGame, type Game } from '@/lib/games'
 import { getAllUsers, getUserStats, getAdminUserTokenBalances, adjustUserTokenBalance, updateUser, deleteUser, blockUser, type User } from '@/lib/auth'
 import { getAllPayments, getPaymentStats, type Payment } from '@/lib/payments'
 import Image from "next/image"
+import EventsManagement from '@/components/events-management'
+import WinnersManagement from '@/components/winners-management'
 
 // Pagination Component
 const Pagination = ({ 
@@ -230,10 +234,10 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState<string | null>(null)
   
   // Pagination state
-  const [gamesPagination, setGamesPagination] = useState({ page: 1, limit: 20, total: 0 })
-  const [usersPagination, setUsersPagination] = useState({ page: 1, limit: 20, total: 0 })
-  const [paymentsPagination, setPaymentsPagination] = useState({ page: 1, limit: 20, total: 0 })
-  const [tokenBalancesPagination, setTokenBalancesPagination] = useState({ page: 1, limit: 20, total: 0 })
+  const [gamesPagination, setGamesPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const [usersPagination, setUsersPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const [paymentsPagination, setPaymentsPagination] = useState({ page: 1, limit: 10, total: 0 })
+  const [tokenBalancesPagination, setTokenBalancesPagination] = useState({ page: 1, limit: 10, total: 0 })
   
   // Individual loading states
   const [gamesLoading, setGamesLoading] = useState(false)
@@ -576,6 +580,12 @@ export default function AdminPage() {
               </TabsTrigger>
               <TabsTrigger value="payments" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
                 <CreditCard className="w-4 h-4 mr-2" /> Payments
+              </TabsTrigger>
+              <TabsTrigger value="events" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <Calendar className="w-4 h-4 mr-2" /> Events
+              </TabsTrigger>
+              <TabsTrigger value="winners" className="data-[state=active]:bg-purple-600 px-4 py-2 rounded-lg font-semibold flex items-center">
+                <Trophy className="w-4 h-4 mr-2" /> Winners
               </TabsTrigger>
             </TabsList>
             <style>{`
@@ -1501,6 +1511,16 @@ export default function AdminPage() {
               onPageChange={handleTokenBalancesPageChange} 
               totalItems={tokenBalancesPagination.total} 
             />
+          </TabsContent>
+
+          {/* Events Tab */}
+          <TabsContent value="events" className="space-y-6">
+            <EventsManagement />
+          </TabsContent>
+
+          {/* Winners Tab */}
+          <TabsContent value="winners" className="space-y-6">
+            <WinnersManagement />
           </TabsContent>
         </Tabs>
 
