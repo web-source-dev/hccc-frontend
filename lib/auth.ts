@@ -239,6 +239,10 @@ export const getAllUsers = async (params?: {
   limit?: number;
   page?: number;
   search?: string;
+  role?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }): Promise<{
   success: boolean;
   data: {
@@ -260,7 +264,7 @@ export const getAllUsers = async (params?: {
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
         }
       });
@@ -425,6 +429,8 @@ export const getAdminTokenBalances = async (params?: {
   search?: string;
   location?: string;
   game?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }): Promise<{
   success: boolean;
   data: {

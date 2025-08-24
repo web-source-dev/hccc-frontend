@@ -181,6 +181,12 @@ export const getAllPayments = async (params?: {
   limit?: number;
   page?: number;
   status?: string;
+  search?: string;
+  game?: string;
+  location?: string;
+  tokens?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
 }): Promise<{
   success: boolean;
   data: {
@@ -202,7 +208,7 @@ export const getAllPayments = async (params?: {
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) {
+        if (value !== undefined && value !== '') {
           queryParams.append(key, value.toString());
         }
       });

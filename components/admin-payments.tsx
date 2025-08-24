@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -136,31 +136,20 @@ export default function AdminPayments() {
     sortOrder: 'desc'
   })
 
-  useEffect(() => {
-    fetchInitialData()
-  }, [])
-
-  const fetchInitialData = async () => {
+  const fetchPaymentsData = useCallback(async (page: number) => {
     setLoading(true)
     try {
-      // Fetch payments and games
-      const paymentsRes = await getAllPayments({ limit: pagination.limit, page: 1 })
-      const gamesRes = await getGames({ limit: 100, page: 1 })
-      
-      setPayments(paymentsRes.data.payments)
-      setGames(gamesRes.data.games)
-      setPagination(prev => ({ ...prev, total: paymentsRes.data.pagination.total }))
-    } catch (error) {
-      console.error('Failed to fetch payments data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchPaymentsData = async (page: number) => {
-    setLoading(true)
-    try {
-      const paymentsRes = await getAllPayments({ limit: pagination.limit, page })
+      const paymentsRes = await getAllPayments({ 
+        limit: pagination.limit, 
+        page,
+        search: filters.search || undefined,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        game: filters.game !== 'all' ? filters.game : undefined,
+        location: filters.location !== 'all' ? filters.location : undefined,
+        tokens: filters.tokens !== 'all' ? filters.tokens : undefined,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder
+      })
       setPayments(paymentsRes.data.payments)
       setPagination(prev => ({ ...prev, total: paymentsRes.data.pagination.total }))
     } catch (error) {
@@ -168,7 +157,42 @@ export default function AdminPayments() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, pagination.limit])
+
+  // Initial load
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      setLoading(true)
+      try {
+        // Fetch payments and games
+        const paymentsRes = await getAllPayments({ limit: pagination.limit, page: 1 })
+        const gamesRes = await getGames({ limit: 100, page: 1 })
+        
+        setPayments(paymentsRes.data.payments)
+        setGames(gamesRes.data.games)
+        setPagination(prev => ({ ...prev, total: paymentsRes.data.pagination.total }))
+      } catch (error) {
+        console.error('Failed to fetch payments data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchInitialData()
+  }, [])
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchPaymentsData(1)
+    }, 1000) // 1000ms delay
+
+    return () => clearTimeout(timeoutId)
+  }, [filters.search])
+
+  // Effect for other filters (status, game, location, tokens, sort)
+  useEffect(() => {
+    fetchPaymentsData(1)
+  }, [filters.status, filters.game, filters.location, filters.tokens, filters.sortBy, filters.sortOrder])
 
   const handlePageChange = async (page: number) => {
     setPagination(prev => ({ ...prev, page }))
@@ -211,62 +235,7 @@ export default function AdminPayments() {
     }
   }
 
-  const filteredPayments = payments
-    .filter(payment => {
-      const matchesSearch = !filters.search || 
-        payment.metadata.gameName.toLowerCase().includes(filters.search.toLowerCase()) ||
-        `${payment.metadata.userFirstname} ${payment.metadata.userLastname}`.toLowerCase().includes(filters.search.toLowerCase()) ||
-        payment.metadata.userEmail.toLowerCase().includes(filters.search.toLowerCase())
-      const matchesStatus = filters.status === 'all' || !filters.status || payment.status === filters.status
-      const matchesGame = filters.game === 'all' || !filters.game || payment.game._id === filters.game
-      const matchesLocation = filters.location === 'all' || !filters.location || payment.location === filters.location
-      const matchesTokens = filters.tokens === 'all' || !filters.tokens || 
-        (filters.tokens === '0-100' && payment.tokenPackage.tokens <= 100) ||
-        (filters.tokens === '100-500' && payment.tokenPackage.tokens > 100 && payment.tokenPackage.tokens <= 500) ||
-        (filters.tokens === '500-1000' && payment.tokenPackage.tokens > 500 && payment.tokenPackage.tokens <= 1000) ||
-        (filters.tokens === '1000+' && payment.tokenPackage.tokens > 1000)
-      return matchesSearch && matchesStatus && matchesGame && matchesLocation && matchesTokens
-    })
-    .sort((a, b) => {
-      let aValue: string | number | Date, bValue: string | number | Date
-      
-      switch (filters.sortBy) {
-        case 'createdAt':
-          aValue = new Date(a.createdAt)
-          bValue = new Date(b.createdAt)
-          break
-        case 'amount':
-          aValue = a.amount
-          bValue = b.amount
-          break
-        case 'tokens':
-          aValue = a.tokenPackage.tokens
-          bValue = b.tokenPackage.tokens
-          break
-        case 'game':
-          aValue = a.game.name
-          bValue = b.game.name
-          break
-        case 'user':
-          aValue = `${a.metadata.userFirstname} ${a.metadata.userLastname}`
-          bValue = `${b.metadata.userFirstname} ${b.metadata.userLastname}`
-          break
-        case 'location':
-          aValue = a.location
-          bValue = b.location
-          break
-        case 'status':
-          aValue = a.status
-          bValue = b.status
-          break
-        default:
-          aValue = ''
-          bValue = ''
-      }
-      
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-      return filters.sortOrder === 'asc' ? comparison : -comparison
-    })
+
 
   return (
     <div className="space-y-6">
@@ -286,13 +255,19 @@ export default function AdminPayments() {
               <Input
                 placeholder="Search payments..."
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => {
+                  setFilters(prev => ({ ...prev, search: e.target.value }))
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="bg-gray-700 border-gray-600 text-white"
               />
             </div>
             <div>
               <Label className="text-gray-400">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+              <Select value={filters.status} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, status: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All status" />
                 </SelectTrigger>
@@ -306,7 +281,10 @@ export default function AdminPayments() {
             </div>
             <div>
               <Label className="text-gray-400">Game</Label>
-              <Select value={filters.game} onValueChange={(value) => setFilters(prev => ({ ...prev, game: value }))}>
+              <Select value={filters.game} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, game: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All games" />
                 </SelectTrigger>
@@ -320,7 +298,10 @@ export default function AdminPayments() {
             </div>
             <div>
               <Label className="text-gray-400">Location</Label>
-              <Select value={filters.location} onValueChange={(value) => setFilters(prev => ({ ...prev, location: value }))}>
+              <Select value={filters.location} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, location: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All locations" />
                 </SelectTrigger>
@@ -333,7 +314,10 @@ export default function AdminPayments() {
             </div>
             <div>
               <Label className="text-gray-400">Tokens</Label>
-              <Select value={filters.tokens} onValueChange={(value) => setFilters(prev => ({ ...prev, tokens: value }))}>
+              <Select value={filters.tokens} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, tokens: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All tokens" />
                 </SelectTrigger>
@@ -348,7 +332,10 @@ export default function AdminPayments() {
             </div>
             <div>
               <Label className="text-gray-400">Sort By</Label>
-              <Select value={filters.sortBy} onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value }))}>
+              <Select value={filters.sortBy} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, sortBy: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue />
                 </SelectTrigger>
@@ -367,10 +354,13 @@ export default function AdminPayments() {
               <Label className="text-gray-400">Order</Label>
               <Button
                 variant="outline"
-                onClick={() => setFilters(prev => ({ 
-                  ...prev, 
-                  sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
-                }))}
+                onClick={() => {
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
+                  }))
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="w-full bg-gray-700 border-gray-600 text-white"
               >
                 {filters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
@@ -401,7 +391,7 @@ export default function AdminPayments() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredPayments.map((payment) => (
+                {payments.map((payment) => (
                   <TableRow key={payment._id} className="border-gray-700">
                     <TableCell>
                       <div className="flex items-center space-x-3">

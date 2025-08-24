@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -137,14 +137,18 @@ export default function AdminUsers() {
     sortOrder: 'desc'
   })
 
-  useEffect(() => {
-    fetchUsersData(1)
-  }, [])
-
-  const fetchUsersData = async (page: number) => {
+  const fetchUsersData = useCallback(async (page: number) => {
     setLoading(true)
     try {
-      const usersRes = await getAllUsers({ limit: pagination.limit, page })
+      const usersRes = await getAllUsers({ 
+        limit: pagination.limit, 
+        page,
+        search: filters.search || undefined,
+        role: filters.role !== 'all' ? filters.role : undefined,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder
+      })
       setUsers(usersRes.data.users)
       setPagination(prev => ({ ...prev, total: usersRes.data.pagination.total }))
     } catch (error) {
@@ -152,7 +156,27 @@ export default function AdminUsers() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [filters, pagination.limit])
+
+  // Initial load
+  useEffect(() => {
+    fetchUsersData(1)
+  }, [])
+
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchUsersData(1)
+    }, 1000) // 1000ms delay
+
+    return () => clearTimeout(timeoutId)
+  }, [filters.search])
+
+  // Effect for other filters (role, status, sort)
+  useEffect(() => {
+    fetchUsersData(1)
+  }, [filters.role, filters.status, filters.sortBy, filters.sortOrder])
+
 
   const handleDeleteUser = async (userId: string) => {
     if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
@@ -219,25 +243,6 @@ export default function AdminUsers() {
     return new Date(dateString).toLocaleDateString()
   }
 
-  const filteredUsers = users
-    .filter(user => {
-      const matchesSearch = !filters.search || 
-        user.firstname.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.lastname.toLowerCase().includes(filters.search.toLowerCase()) ||
-        user.email.toLowerCase().includes(filters.search.toLowerCase())
-      const matchesRole = filters.role === 'all' || !filters.role || user.role === filters.role
-      const matchesStatus = filters.status === 'all' || !filters.status || 
-        (filters.status === 'active' && user.isActive !== false) ||
-        (filters.status === 'inactive' && user.isActive === false)
-      return matchesSearch && matchesRole && matchesStatus
-    })
-    .sort((a, b) => {
-      const aValue = a[filters.sortBy as keyof User] || ''
-      const bValue = b[filters.sortBy as keyof User] || ''
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-      return filters.sortOrder === 'asc' ? comparison : -comparison
-    })
-
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -256,13 +261,19 @@ export default function AdminUsers() {
               <Input
                 placeholder="Search users..."
                 value={filters.search}
-                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+                onChange={(e) => {
+                  setFilters(prev => ({ ...prev, search: e.target.value }))
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="bg-gray-700 border-gray-600 text-white"
               />
             </div>
             <div>
               <Label className="text-gray-400">Role</Label>
-              <Select value={filters.role} onValueChange={(value) => setFilters(prev => ({ ...prev, role: value }))}>
+              <Select value={filters.role} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, role: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All roles" />
                 </SelectTrigger>
@@ -277,7 +288,10 @@ export default function AdminUsers() {
             </div>
             <div>
               <Label className="text-gray-400">Status</Label>
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+              <Select value={filters.status} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, status: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All status" />
                 </SelectTrigger>
@@ -290,7 +304,10 @@ export default function AdminUsers() {
             </div>
             <div>
               <Label className="text-gray-400">Sort By</Label>
-              <Select value={filters.sortBy} onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value }))}>
+              <Select value={filters.sortBy} onValueChange={(value) => {
+                setFilters(prev => ({ ...prev, sortBy: value }))
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue />
                 </SelectTrigger>
@@ -307,10 +324,13 @@ export default function AdminUsers() {
               <Label className="text-gray-400">Order</Label>
               <Button
                 variant="outline"
-                onClick={() => setFilters(prev => ({ 
-                  ...prev, 
-                  sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
-                }))}
+                onClick={() => {
+                  setFilters(prev => ({ 
+                    ...prev, 
+                    sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
+                  }))
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="w-full bg-gray-700 border-gray-600 text-white"
               >
                 {filters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
@@ -340,7 +360,7 @@ export default function AdminUsers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredUsers.map((user) => (
+                {users.map((user) => (
                   <TableRow key={user._id || user.id} className="border-gray-700">
                     <TableCell>
                       <div>

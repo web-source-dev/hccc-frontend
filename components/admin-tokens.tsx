@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -170,85 +170,56 @@ export default function AdminTokens() {
     fetchGames()
   }, [])
 
-  // Fetch token balances when filters or pagination changes
-  useEffect(() => {
-    const fetchTokenBalances = async () => {
-      setLoading(true)
-      try {
-        const params: any = {
-          page: pagination.page,
-          limit: pagination.limit
-        }
-        
-        if (filters.search) params.search = filters.search
-        if (filters.location !== 'all') params.location = filters.location
-        if (filters.game !== 'all') params.game = filters.game
-
-        const response = await getAdminTokenBalances(params)
-        setTokenBalances(response.data.balances)
-        setPagination(prev => ({
-          ...prev,
-          total: response.data.pagination.total,
-          pages: response.data.pagination.pages
-        }))
-      } catch (error) {
-        console.error('Failed to fetch token balances:', error)
-      } finally {
-        setLoading(false)
+  const fetchTokenBalances = useCallback(async (page: number) => {
+    setLoading(true)
+    try {
+      const params: any = {
+        page,
+        limit: pagination.limit,
+        search: filters.search || undefined,
+        location: filters.location !== 'all' ? filters.location : undefined,
+        game: filters.game !== 'all' ? filters.game : undefined,
+        sortBy: filters.sortBy,
+        sortOrder: filters.sortOrder
       }
+
+      const response = await getAdminTokenBalances(params)
+      setTokenBalances(response.data.balances)
+      setPagination(prev => ({
+        ...prev,
+        total: response.data.pagination.total,
+        pages: response.data.pagination.pages
+      }))
+    } catch (error) {
+      console.error('Failed to fetch token balances:', error)
+    } finally {
+      setLoading(false)
     }
+  }, [filters, pagination.limit])
 
-    fetchTokenBalances()
-  }, [pagination.page, filters.search, filters.location, filters.game])
+  // Initial load
+  useEffect(() => {
+    fetchTokenBalances(1)
+  }, [])
 
-  // Compute filtered and sorted token balances
-  const filteredTokenBalances = useMemo(() => {
-    let filtered = [...tokenBalances]
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchTokenBalances(1)
+    }, 1000) // 1000ms delay
 
-    // Apply sorting
-    filtered.sort((a, b) => {
-      let aValue: any
-      let bValue: any
+    return () => clearTimeout(timeoutId)
+  }, [filters.search])
 
-      switch (filters.sortBy) {
-        case 'user':
-          aValue = `${a.user.firstname} ${a.user.lastname}`.toLowerCase()
-          bValue = `${b.user.firstname} ${b.user.lastname}`.toLowerCase()
-          break
-        case 'game':
-          aValue = a.game.name.toLowerCase()
-          bValue = b.game.name.toLowerCase()
-          break
-        case 'location':
-          aValue = a.location.toLowerCase()
-          bValue = b.location.toLowerCase()
-          break
-        case 'tokens':
-          aValue = a.tokens
-          bValue = b.tokens
-          break
-        case 'updatedAt':
-          aValue = new Date(a.updatedAt).getTime()
-          bValue = new Date(b.updatedAt).getTime()
-          break
-        default:
-          aValue = `${a.user.firstname} ${a.user.lastname}`.toLowerCase()
-          bValue = `${b.user.firstname} ${b.user.lastname}`.toLowerCase()
-      }
-
-      if (filters.sortOrder === 'asc') {
-        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0
-      } else {
-        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0
-      }
-    })
-
-    return filtered
-  }, [tokenBalances, filters.sortBy, filters.sortOrder])
+  // Effect for other filters (location, game, sort)
+  useEffect(() => {
+    fetchTokenBalances(1)
+  }, [filters.location, filters.game, filters.sortBy, filters.sortOrder])
 
   // Handle page change
   const handlePageChange = (page: number) => {
     setPagination(prev => ({ ...prev, page }))
+    fetchTokenBalances(page)
   }
 
   // Handle filter changes
@@ -301,13 +272,19 @@ export default function AdminTokens() {
               <Input
                 placeholder="Search by name..."
                 value={filters.search}
-                onChange={(e) => handleFilterChange('search', e.target.value)}
+                onChange={(e) => {
+                  handleFilterChange('search', e.target.value)
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="bg-gray-700 border-gray-600 text-white"
               />
             </div>
             <div>
               <Label className="text-gray-400">Location</Label>
-              <Select value={filters.location} onValueChange={(value) => handleFilterChange('location', value)}>
+              <Select value={filters.location} onValueChange={(value) => {
+                handleFilterChange('location', value)
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All locations" />
                 </SelectTrigger>
@@ -320,7 +297,10 @@ export default function AdminTokens() {
             </div>
             <div>
               <Label className="text-gray-400">Game</Label>
-              <Select value={filters.game} onValueChange={(value) => handleFilterChange('game', value)}>
+              <Select value={filters.game} onValueChange={(value) => {
+                handleFilterChange('game', value)
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue placeholder="All games" />
                 </SelectTrigger>
@@ -334,7 +314,10 @@ export default function AdminTokens() {
             </div>
             <div>
               <Label className="text-gray-400">Sort By</Label>
-              <Select value={filters.sortBy} onValueChange={(value) => handleFilterChange('sortBy', value)}>
+              <Select value={filters.sortBy} onValueChange={(value) => {
+                handleFilterChange('sortBy', value)
+                setPagination(prev => ({ ...prev, page: 1 }))
+              }}>
                 <SelectTrigger className="bg-gray-700 border-gray-600 text-white">
                   <SelectValue />
                 </SelectTrigger>
@@ -351,7 +334,10 @@ export default function AdminTokens() {
               <Label className="text-gray-400">Order</Label>
               <Button
                 variant="outline"
-                onClick={() => handleFilterChange('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')}
+                onClick={() => {
+                  handleFilterChange('sortOrder', filters.sortOrder === 'asc' ? 'desc' : 'asc')
+                  setPagination(prev => ({ ...prev, page: 1 }))
+                }}
                 className="w-full bg-gray-700 border-gray-600 text-white"
               >
                 {filters.sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
@@ -381,14 +367,14 @@ export default function AdminTokens() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTokenBalances.length === 0 ? (
+                {tokenBalances.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center py-8 text-gray-400">
                       No token balances found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTokenBalances.map((balance) => {
+                  tokenBalances.map((balance) => {
                     const game = games.find(g => g._id === balance.game._id)
                     
                     return (
