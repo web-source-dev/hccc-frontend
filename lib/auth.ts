@@ -418,6 +418,85 @@ export const getAdminUserTokenBalances = async (userId: string): Promise<{
   }
 };
 
+// Get all token balances for admin (bulk endpoint)
+export const getAdminTokenBalances = async (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  location?: string;
+  game?: string;
+}): Promise<{
+  success: boolean;
+  data: {
+    balances: Array<{
+      _id: string;
+      user: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+      };
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      pendingTokens: number;
+      tokensScheduledFor: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>;
+    pendingTokens: Array<{
+      user: {
+        _id: string;
+        firstname: string;
+        lastname: string;
+        email: string;
+      };
+      game: {
+        _id: string;
+        name: string;
+      };
+      location: string;
+      tokens: number;
+      scheduledFor: string;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
+}> => {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/admin/tokens?${queryParams}`, {
+      headers: getAuthHeaders(),
+      credentials: 'include',
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to fetch token balances');
+    }
+
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Adjust token balance for a user (admin only)
 export const adjustUserTokenBalance = async (
   userId: string, 
