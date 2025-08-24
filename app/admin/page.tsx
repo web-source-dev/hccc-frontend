@@ -19,10 +19,14 @@ import AdminUsers from '@/components/admin-users'
 import AdminTokens from '@/components/admin-tokens'
 import AdminPayments from '@/components/admin-payments'
 
+const ADMIN_TAB_STORAGE_KEY = 'admin_current_tab'
+const DEFAULT_TAB = 'overview'
+
 export default function AdminPage() {
   const [authError, setAuthError] = useState<string | null>(null)
+  const [currentTab, setCurrentTab] = useState<string>(DEFAULT_TAB)
 
-  // Check authentication status
+  // Check authentication status and load saved tab
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -38,10 +42,35 @@ export default function AdminPage() {
         setAuthError('Authentication check failed');
       }
     };
+
+    // Load saved tab from localStorage
+    const loadSavedTab = () => {
+      try {
+        const savedTab = localStorage.getItem(ADMIN_TAB_STORAGE_KEY);
+        if (savedTab && ['overview', 'games', 'users', 'tokens', 'payments', 'events', 'winners'].includes(savedTab)) {
+          setCurrentTab(savedTab);
+        }
+      } catch (error) {
+        console.error('Error loading saved tab:', error);
+        setCurrentTab(DEFAULT_TAB);
+      }
+    };
+
     checkAuth();
+    loadSavedTab();
     // Only run on mount, ignore authError in dependency to avoid infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save tab to localStorage when it changes
+  const handleTabChange = (value: string) => {
+    setCurrentTab(value);
+    try {
+      localStorage.setItem(ADMIN_TAB_STORAGE_KEY, value);
+    } catch (error) {
+      console.error('Error saving tab to localStorage:', error);
+    }
+  };
 
   if (authError) {
     return (
@@ -57,7 +86,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           <div className="mb-6 pt-4 pb-2">
             <TabsList
               className="flex w-full whitespace-nowrap gap-2 bg-gray-800 border-gray-700 rounded-lg p-1 overflow-x-auto justify-start lg:justify-center"

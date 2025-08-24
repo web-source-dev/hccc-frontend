@@ -66,7 +66,7 @@ export default function AdminOverview() {
       const featuredGames = gamesData.filter(game => game.featured).length
 
       const statsData = {
-        totalGames: userStatsRes.data.totalUsers > 0 ? userStatsRes.data.totalUsers : gamesData.length,
+        totalGames: gamesData.length,
         totalUsers: userStatsRes.data.totalUsers,
         totalRevenue: paymentStatsRes.data.totalRevenue,
         totalPayments: paymentStatsRes.data.totalPayments,
@@ -134,9 +134,9 @@ export default function AdminOverview() {
             <Gamepad2 className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">6</div>
+            <div className="text-2xl font-bold text-white">{stats.totalGames}</div>
             <p className="text-xs text-gray-400">
-              6 active, 0 featured
+              {stats.activeGames} active, {stats.featuredGames} featured
             </p>
           </CardContent>
         </Card>
