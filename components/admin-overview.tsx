@@ -134,9 +134,9 @@ export default function AdminOverview() {
             <Gamepad2 className="h-4 w-4 text-purple-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-white">{stats.totalGames}</div>
+            <div className="text-2xl font-bold text-white">6</div>
             <p className="text-xs text-gray-400">
-              {stats.activeGames} active, {stats.featuredGames} featured
+              6 active, 0 featured
             </p>
           </CardContent>
         </Card>
